@@ -32,7 +32,7 @@ export const SimulationControls = ({
     <div className="w-full bg-gradient-simulation border-b border-border">
       <div className="p-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground">AI Ant Colony Simulation</h1>
+          <h1 className="text-2xl font-bold text-foreground">Colony Management</h1>
           <div className="flex items-center gap-2">
             {!isRunning ? (
               <Button onClick={onStart} disabled={!isSimulationLoaded || isRunning}>
