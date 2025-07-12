@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+openai
+numpy
+python-dotenv
+pandas # Still useful for data manipulation if needed
