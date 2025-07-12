@@ -2,12 +2,12 @@
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Updated Ant interface to include the is_queen flag
+// Define ant interface
 interface Ant {
   id: number | string;
   pos: [number, number];
   carrying_food: boolean;
-  is_queen?: boolean; // is_queen is now an optional flag
+  is_queen?: boolean;
 }
 
 interface SimulationGridProps {
@@ -18,43 +18,47 @@ interface SimulationGridProps {
 }
 
 export const SimulationGrid = ({ gridWidth, gridHeight, ants, food }: SimulationGridProps) => {
-  
-  // CHANGE: Updated emoji logic
-  const getAntEmoji = (ant: Ant) => {
-    if (ant.is_queen) {
-      return "👸"; // Queen Ant emoji
-    }
-    return "🐜"; // Regular ant emoji
-  };
-
+  const getAntEmoji = (ant: Ant) => ant.is_queen ? "👸" : "🐜";
   const cellSize = Math.min(600 / gridWidth, 600 / gridHeight);
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col items-center">
+      <div className="relative flex flex-col items-center">
         <div
-          className="relative border-2 border-simulation-grid-border rounded-lg overflow-hidden"
+          className="relative rounded-xl overflow-hidden shadow-xl border border-neutral-600"
           style={{
             width: gridWidth * cellSize,
             height: gridHeight * cellSize,
-            backgroundColor: "hsl(var(--grid-cell))",
             backgroundImage: `
-              linear-gradient(to right, hsl(var(--grid-border)) 1px, transparent 1px),
-              linear-gradient(to bottom, hsl(var(--grid-border)) 1px, transparent 1px)
+              linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px),
+              radial-gradient(circle at center, #6b4f30, #3e2a1c)
             `,
-            backgroundSize: `${cellSize}px ${cellSize}px`
+            backgroundSize: `${cellSize}px ${cellSize}px, ${cellSize}px ${cellSize}px, cover`,
+            backgroundBlendMode: "overlay",
           }}
         >
-          {/* Food piles (Sugar Cubes) */}
+          {/* Floating legend */}
+          <div className="absolute top-3 right-3 z-20 p-3 text-xs rounded-md border border-white/20 shadow-md backdrop-blur bg-white/10 text-white space-y-1">
+            <div className="flex items-center gap-1"><span>🧊</span> <span>Sugar Cubes</span></div>
+            <div className="flex items-center gap-1"><span>🐜</span> <span>Worker Ants</span></div>
+            <div className="flex items-center gap-1"><span>👸</span> <span>Queen Ant</span></div>
+            <div className="flex items-center gap-1"><span>🏠</span> <span>Anthill</span></div>
+          </div>
+
+          {/* Sugar Cubes */}
           {food.map((pile, index) => (
             <div
               key={`food-${index}`}
-              className="absolute flex items-center justify-center text-xl"
+              className="absolute text-lg"
               style={{
                 left: pile[0] * cellSize,
                 top: pile[1] * cellSize,
                 width: cellSize,
                 height: cellSize,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               🧊
@@ -66,20 +70,22 @@ export const SimulationGrid = ({ gridWidth, gridHeight, ants, food }: Simulation
             <Tooltip key={ant.id}>
               <TooltipTrigger asChild>
                 <div
-                  className="absolute flex items-center justify-center text-2xl transition-all duration-200"
+                  className="absolute transition-all duration-200"
                   style={{
                     left: ant.pos[0] * cellSize,
                     top: ant.pos[1] * cellSize,
                     width: cellSize,
                     height: cellSize,
-                    // Make the queen slightly larger and give her a subtle glow
                     fontSize: ant.is_queen ? '1.5rem' : '1.25rem',
-                    filter: ant.is_queen ? 'drop-shadow(0 0 5px gold)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    filter: ant.is_queen ? 'drop-shadow(0 0 6px gold)' : 'none',
                   }}
                 >
                   {getAntEmoji(ant)}
                   {ant.carrying_food && (
-                    <div className="absolute -top-1 -right-1 text-sm">🧊</div>
+                    <div className="absolute -top-1 -right-1 text-xs">🧊</div>
                   )}
                 </div>
               </TooltipTrigger>

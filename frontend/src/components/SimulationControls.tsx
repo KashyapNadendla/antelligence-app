@@ -32,22 +32,22 @@ export const SimulationControls = ({
     <div className="w-full bg-gradient-simulation border-b border-border">
       <div className="p-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Colony Management</h1>
+          <h1 className="text-2xl font-bold text-foreground">Ant Colony Management</h1>
           <div className="flex items-center gap-2">
             {!isRunning ? (
               <Button onClick={onStart} disabled={!isSimulationLoaded || isRunning}>
-                <Play className="h-4 w-4 mr-2" /> Play
+                <Play className="h-4 w-4 mr-2" /> Start Foraging
               </Button>
             ) : (
               <Button onClick={onPause} disabled={!isRunning} variant="secondary">
-                <Pause className="h-4 w-4 mr-2" /> Pause
+                <Pause className="h-4 w-4 mr-2" /> Pause Foraging
               </Button>
             )}
             <Button onClick={onStep} variant="outline" disabled={!isSimulationLoaded}>
               <SkipForward className="h-4 w-4 mr-2" /> Step
             </Button>
             <Button onClick={onReset} variant="outline" disabled={!isSimulationLoaded}>
-              <RotateCcw className="h-4 w-4 mr-2" /> Reset
+              <RotateCcw className="h-4 w-4 mr-2" /> Reset Habitat
             </Button>
           </div>
         </div>
