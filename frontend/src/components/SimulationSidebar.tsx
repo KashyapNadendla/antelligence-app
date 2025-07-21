@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 interface SimulationSidebarProps {
   isCollapsed: boolean;
@@ -29,6 +32,8 @@ export const SimulationSidebar = ({
   onRunSimulation,
   isLoading,
 }: SimulationSidebarProps) => {
+  const [isPheromoneOpen, setIsPheromoneOpen] = useState(false);
+
   const handleChange = (key: string, value: any) => {
     onSettingsChange((prev: any) => ({ ...prev, [key]: value }));
   };
@@ -103,7 +108,7 @@ export const SimulationSidebar = ({
 
           <div>
             <Label className="flex justify-between text-sm">
-              <span>🐜 Colony Size</span>
+              <span>�� Colony Size</span>
               <span className="text-orange-200">{settings.n_ants}</span>
             </Label>
             <Slider
@@ -191,6 +196,99 @@ export const SimulationSidebar = ({
             />
           </div>
         </div>
+
+        {/* Pheromone System */}
+        <Collapsible open={isPheromoneOpen} onOpenChange={setIsPheromoneOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-md hover:bg-[#4a2e1c] transition-colors">
+            <h3 className="text-base font-semibold text-cyan-200">🧪 Pheromone System</h3>
+            {isPheromoneOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 mt-4">
+            <div>
+              <Label className="flex justify-between text-sm">
+                <span>💨 Decay Rate</span>
+                <span className="text-cyan-300">{settings.pheromone_decay_rate}</span>
+              </Label>
+              <Slider
+                min={0.01}
+                max={0.2}
+                step={0.01}
+                value={[settings.pheromone_decay_rate]}
+                onValueChange={([v]) => handleChange("pheromone_decay_rate", v)}
+                className="bg-gradient-to-r from-cyan-400 to-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">Rate at which pheromones fade away</p>
+            </div>
+
+            <div>
+              <Label className="flex justify-between text-sm">
+                <span>🟢 Trail Deposit</span>
+                <span className="text-green-300">{settings.trail_deposit}</span>
+              </Label>
+              <Slider
+                min={0.1}
+                max={5.0}
+                step={0.1}
+                value={[settings.trail_deposit]}
+                onValueChange={([v]) => handleChange("trail_deposit", v)}
+                className="bg-gradient-to-r from-green-400 to-green-600"
+              />
+              <p className="text-xs text-gray-400 mt-1">Amount deposited on successful paths</p>
+            </div>
+
+            <div>
+              <Label className="flex justify-between text-sm">
+                <span>🔴 Alarm Deposit</span>
+                <span className="text-red-300">{settings.alarm_deposit}</span>
+              </Label>
+              <Slider
+                min={0.1}
+                max={5.0}
+                step={0.1}
+                value={[settings.alarm_deposit]}
+                onValueChange={([v]) => handleChange("alarm_deposit", v)}
+                className="bg-gradient-to-r from-red-400 to-red-600"
+              />
+              <p className="text-xs text-gray-400 mt-1">Amount deposited when problems occur</p>
+            </div>
+
+            <div>
+              <Label className="flex justify-between text-sm">
+                <span>🔵 Recruitment Deposit</span>
+                <span className="text-blue-300">{settings.recruitment_deposit}</span>
+              </Label>
+              <Slider
+                min={0.1}
+                max={5.0}
+                step={0.1}
+                value={[settings.recruitment_deposit]}
+                onValueChange={([v]) => handleChange("recruitment_deposit", v)}
+                className="bg-gradient-to-r from-blue-400 to-blue-600"
+              />
+              <p className="text-xs text-gray-400 mt-1">Amount deposited when help is needed</p>
+            </div>
+
+            <div>
+              <Label className="flex justify-between text-sm">
+                <span>⚡ Max Pheromone Value</span>
+                <span className="text-yellow-300">{settings.max_pheromone_value}</span>
+              </Label>
+              <Slider
+                min={5.0}
+                max={20.0}
+                step={0.5}
+                value={[settings.max_pheromone_value]}
+                onValueChange={([v]) => handleChange("max_pheromone_value", v)}
+                className="bg-gradient-to-r from-yellow-400 to-orange-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">Maximum concentration limit</p>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Max Steps */}
         <div>
