@@ -13,6 +13,16 @@ interface Ant {
   steps_since_food?: number;
 }
 
+// Define predator interface matching backend data
+interface Predator {
+  id: number | string;
+  pos: [number, number];
+  energy: number;
+  is_llm: boolean;
+  ants_caught: number;
+  hunt_cooldown: number;
+}
+
 interface EfficiencyData {
   efficiency_grid: number[][];
   max_efficiency: number;
@@ -23,10 +33,12 @@ interface PheromoneData {
   trail: number[][];
   alarm: number[][];
   recruitment: number[][];
+  fear?: number[][]; // Add fear pheromone (optional for backward compatibility)
   max_values: {
     trail: number;
     alarm: number;
     recruitment: number;
+    fear?: number; // Add fear max value (optional for backward compatibility)
   };
 }
 
@@ -36,6 +48,7 @@ interface SimulationGridProps {
   ants: Ant[];
   food: [number, number][];
   nestPosition?: [number, number];
+  predators?: Predator[];
   efficiencyData?: EfficiencyData | null;
   pheromoneData?: PheromoneData | null;
 }
@@ -46,6 +59,7 @@ export const SimulationGrid = ({
   ants, 
   food, 
   nestPosition,
+  predators = [],
   efficiencyData,
   pheromoneData
 }: SimulationGridProps) => {
@@ -100,64 +114,22 @@ export const SimulationGrid = ({
 
   // Create subtle pheromone overlay (less intrusive than efficiency)
   const renderPheromoneOverlay = () => {
-    if (!pheromoneData) return null;
-
-    const maxTrail = pheromoneData.max_values.trail;
-    const maxAlarm = pheromoneData.max_values.alarm;
-    
-    if (maxTrail === 0 && maxAlarm === 0) return null;
-
-    return (
-      <div className="absolute inset-0 pointer-events-none">
-        {pheromoneData.trail.map((row, y) =>
-          row.map((trailValue, x) => {
-            const alarmValue = pheromoneData.alarm[y]?.[x] || 0;
-            
-            if (trailValue === 0 && alarmValue === 0) return null;
-            
-            // Show trail as subtle green, alarm as subtle red
-            let backgroundColor = '';
-            if (trailValue > alarmValue && maxTrail > 0) {
-              const opacity = Math.min(trailValue / maxTrail, 0.4);
-              backgroundColor = `rgba(16, 185, 129, ${opacity * 0.3})`;
-            } else if (alarmValue > 0 && maxAlarm > 0) {
-              const opacity = Math.min(alarmValue / maxAlarm, 0.4);
-              backgroundColor = `rgba(239, 68, 68, ${opacity * 0.3})`;
-            }
-            
-            if (!backgroundColor) return null;
-            
-            return (
-              <div
-                key={`pheromone-${x}-${y}`}
-                className="absolute"
-                style={{
-                  left: x * cellSize,
-                  top: y * cellSize,
-                  width: cellSize,
-                  height: cellSize,
-                  backgroundColor,
-                }}
-              />
-            );
-          })
-        )}
-      </div>
-    );
+    // Pheromone heat maps removed - return null
+    return null;
   };
 
   return (
     <TooltipProvider>
       <div className="relative flex flex-col items-center">
         <div
-          className="relative rounded-xl overflow-hidden shadow-xl border border-neutral-600"
+          className="relative rounded-xl overflow-hidden shadow-xl border border-amber-300 dark:border-amber-700"
           style={{
             width: gridWidth * cellSize,
             height: gridHeight * cellSize,
             backgroundImage: `
-              linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px),
-              radial-gradient(circle at center, #6b4f30, #3e2a1c)
+              linear-gradient(to right, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+              radial-gradient(circle at center, #f4e4bc, #e6d7a8)
             `,
             backgroundSize: `${cellSize}px ${cellSize}px, ${cellSize}px ${cellSize}px, cover`,
             backgroundBlendMode: "overlay",
@@ -168,17 +140,6 @@ export const SimulationGrid = ({
 
           {/* Efficiency overlay (middle layer) */}
           {renderEfficiencyOverlay()}
-
-          {/* Floating legend */}
-          <div className="absolute top-3 right-3 z-20 p-3 text-xs rounded-md border border-white/20 shadow-md backdrop-blur bg-white/10 text-white space-y-1">
-            <div className="flex items-center gap-1"><span>🧊</span> <span>Sugar Cubes</span></div>
-            <div className="flex items-center gap-1"><span>🐜</span> <span>Worker Ants</span></div>
-            <div className="flex items-center gap-1"><span>👸</span> <span>Queen Ant</span></div>
-            <div className="flex items-center gap-1"><span>🏠</span> <span>Nest</span></div>
-            {efficiencyData && (
-              <div className="flex items-center gap-1"><span>🔥</span> <span>Hotspots</span></div>
-            )}
-          </div>
 
           {/* Nest/Home - only show if no queen is at this position */}
           {!ants.some(ant => ant.is_queen && ant.pos[0] === nest[0] && ant.pos[1] === nest[1]) && (
@@ -261,6 +222,44 @@ export const SimulationGrid = ({
             </Tooltip>
           ))}
 
+          {/* Predators */}
+          {predators.map((predator) => (
+            <Tooltip key={predator.id}>
+              <TooltipTrigger asChild>
+                <div
+                  className="absolute transition-all duration-200"
+                  style={{
+                    left: predator.pos[0] * cellSize,
+                    top: predator.pos[1] * cellSize,
+                    width: cellSize,
+                    height: cellSize,
+                    fontSize: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    filter: 'drop-shadow(0 0 8px rgba(139, 0, 0, 0.8))',
+                    zIndex: 25, // Above ants but below queen
+                  }}
+                >
+                  {predator.is_llm ? '🦗' : '🐺'}
+                  {predator.energy < 50 && (
+                    <div className="absolute -bottom-1 -right-1 text-xs">💤</div>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="space-y-1 text-sm">
+                  <div><strong>ID:</strong> {predator.id}</div>
+                  <div><strong>Type:</strong> {predator.is_llm ? "🧠 LLM Predator" : "⚡ Rule Predator"}</div>
+                  <div><strong>Position:</strong> ({predator.pos[0]}, {predator.pos[1]})</div>
+                  <div><strong>Energy:</strong> {predator.energy}/100</div>
+                  <div><strong>Ants Caught:</strong> {predator.ants_caught}</div>
+                  <div><strong>Hunt Cooldown:</strong> {predator.hunt_cooldown}</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+
           {/* Hotspot indicators */}
           {efficiencyData?.hotspot_locations.slice(0, 5).map(([x, y], index) => (
             <div
@@ -282,7 +281,7 @@ export const SimulationGrid = ({
         </div>
 
         {/* Status bar below grid */}
-        {(efficiencyData || pheromoneData) && (
+        {efficiencyData && (
           <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
             <div className="flex gap-6 text-center">
               {efficiencyData && (
@@ -291,33 +290,9 @@ export const SimulationGrid = ({
                   <div className="text-orange-600">{efficiencyData.max_efficiency.toFixed(2)}</div>
                 </div>
               )}
-              {pheromoneData && (
-                <>
-                  <div>
-                    <div className="font-semibold">🟢 Trail</div>
-                    <div className="text-green-600">{pheromoneData.max_values.trail.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold">🔴 Alarm</div>
-                    <div className="text-red-600">{pheromoneData.max_values.alarm.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold">🔵 Recruitment</div>
-                    <div className="text-blue-600">{pheromoneData.max_values.recruitment.toFixed(2)}</div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         )}
-
-        <style jsx>{`
-          @keyframes pulse {
-            0% { opacity: 0.4; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.2); }
-            100% { opacity: 0.4; transform: scale(1); }
-          }
-        `}</style>
       </div>
     </TooltipProvider>
   );

@@ -22,6 +22,12 @@ class SimulationConfig(BaseModel):
     alarm_deposit: float = Field(2.0, ge=0.1, le=5.0, description="Alarm pheromone deposit amount")
     recruitment_deposit: float = Field(1.5, ge=0.1, le=5.0, description="Recruitment pheromone deposit amount")
     max_pheromone_value: float = Field(10.0, ge=5.0, le=20.0, description="Maximum pheromone value")
+    
+    # Predator configuration parameters
+    enable_predators: bool = Field(False, description="Whether to enable predators in the simulation")
+    n_predators: int = Field(0, ge=0, le=10, description="Number of predators in the ecosystem")
+    predator_type: Literal["LLM-Powered", "Rule-Based", "Hybrid"] = "LLM-Powered"
+    fear_deposit: float = Field(3.0, ge=1.0, le=10.0, description="Fear pheromone deposit amount")
 
 class AntState(BaseModel):
     """Represents the state of a single ant at a point in time."""
@@ -31,6 +37,15 @@ class AntState(BaseModel):
     is_llm: bool
     is_queen: bool = False # Flag to identify queen ant
     steps_since_food: Optional[int] = None # For tracking recruitment behavior
+
+class PredatorState(BaseModel):
+    """Represents the state of a single predator at a point in time."""
+    id: int | str
+    pos: Tuple[int, int]
+    energy: int
+    is_llm: bool
+    ants_caught: int
+    hunt_cooldown: int
 
 class FoodDepletionPoint(BaseModel):
     """Represents a point in the food depletion history."""
@@ -42,6 +57,7 @@ class PheromoneMapData(BaseModel):
     trail: List[List[float]]
     alarm: List[List[float]]
     recruitment: List[List[float]]
+    fear: List[List[float]] = []  # Add fear pheromone with default empty list
     max_values: Dict[str, float]
 
 class ForagingEfficiencyData(BaseModel):
@@ -54,6 +70,7 @@ class StepState(BaseModel):
     """Represents the complete state of the simulation at a single step."""
     step: int
     ants: List[AntState]
+    predators: List[PredatorState] = []  # Add predators with default empty list
     food_positions: List[Tuple[int, int]]
     metrics: Dict
     queen_report: str
@@ -72,6 +89,7 @@ class SimulationResult(BaseModel):
     initial_food_count: int
     final_pheromone_data: Optional[PheromoneMapData] = None
     final_efficiency_data: Optional[ForagingEfficiencyData] = None
+    blockchain_logs: List[str] = []  # Add blockchain transaction logs
 
 class ComparisonConfig(SimulationConfig):
     """Configuration for the comparison endpoint."""

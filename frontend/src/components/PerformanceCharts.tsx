@@ -18,10 +18,12 @@ interface PheromoneData {
   trail: number[][];
   alarm: number[][];
   recruitment: number[][];
+  fear?: number[][];
   max_values: {
     trail: number;
     alarm: number;
     recruitment: number;
+    fear?: number;
   };
 }
 
@@ -85,16 +87,11 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
     return data;
   }, [currentMetrics, performanceData]);
 
-  // Prepare pheromone summary data for chart
+  // Prepare pheromone summary data for chart - REMOVED
   const pheromoneChartData = React.useMemo(() => {
-    if (!pheromoneData) return [];
-    
-    return [
-      { type: 'Trail', value: pheromoneData.max_values.trail, color: '#10b981' },
-      { type: 'Alarm', value: pheromoneData.max_values.alarm, color: '#ef4444' },
-      { type: 'Recruitment', value: pheromoneData.max_values.recruitment, color: '#3b82f6' }
-    ];
-  }, [pheromoneData]);
+    // Pheromone charts removed - return empty array
+    return [];
+  }, []);
 
   // Prepare hotspot data for scatter plot
   const hotspotData = React.useMemo(() => {
@@ -181,69 +178,48 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
         </Card>
       </div>
 
-      {/* Pheromone Analysis Row */}
-      {pheromoneData && (
+      {/* Remove pheromone charts - only show efficiency and other charts */}
+      {efficiencyData && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pheromone Intensity Chart */}
+          {/* Foraging Hotspots */}
           <Card>
             <CardHeader>
-              <CardTitle>🧪 Pheromone Intensity Levels</CardTitle>
+              <CardTitle>🔥 Foraging Hotspots</CardTitle>
               <CardDescription>
-                Maximum pheromone concentrations by type
+                Areas of highest LLM ant activity and food collection
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={pheromoneChartData}>
+                <ScatterChart>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="type" />
-                  <YAxis label={{ value: 'Max Intensity', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip formatter={(value) => [value.toFixed(2), 'Intensity']} />
-                  <Bar 
-                    dataKey="value" 
-                    fill="#8884d8"
-                    name="Max Intensity"
+                  <XAxis 
+                    type="number" 
+                    dataKey="x" 
+                    domain={[0, 20]} 
+                    label={{ value: 'X Position', position: 'bottom' }}
                   />
-                </BarChart>
+                  <YAxis 
+                    type="number" 
+                    dataKey="y" 
+                    domain={[0, 20]} 
+                    label={{ value: 'Y Position', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value, name, props) => [
+                      `(${props.payload.x}, ${props.payload.y})`, 
+                      'Hotspot'
+                    ]}
+                  />
+                  <Scatter 
+                    data={efficiencyData.hotspot_locations.map(([x, y], index) => ({ x, y, index }))}
+                    fill="#ff6b35"
+                    name="Hotspots"
+                  />
+                </ScatterChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
-
-          {/* Foraging Hotspots */}
-          {efficiencyData && hotspotData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>🔥 Foraging Hotspots</CardTitle>
-                <CardDescription>
-                  LLM ant activity concentration areas (max efficiency: {efficiencyData.max_efficiency.toFixed(1)})
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <ScatterChart data={hotspotData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="x" 
-                      label={{ value: 'X Position', position: 'insideBottom', offset: -5 }}
-                    />
-                    <YAxis 
-                      dataKey="y"
-                      label={{ value: 'Y Position', angle: -90, position: 'insideLeft' }}
-                    />
-                    <Tooltip 
-                      formatter={(value, name) => [value, name === 'intensity' ? 'Hotspot Rank' : 'Position']}
-                      labelFormatter={(label) => `Position: ${label}`}
-                    />
-                    <Scatter
-                      dataKey="intensity"
-                      fill="#ff6b35"
-                      name="Activity Hotspots"
-                    />
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
@@ -304,6 +280,15 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Max Alarm</div>
                 </div>
+                
+                {pheromoneData.max_values.fear !== undefined && (
+                  <div className="bg-orange-50 dark:bg-orange-950 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {pheromoneData.max_values.fear.toFixed(1)}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Max Fear</div>
+                  </div>
+                )}
               </>
             )}
           </div>

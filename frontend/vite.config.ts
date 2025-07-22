@@ -9,6 +9,20 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  // Base URL for production - will be served from backend
+  base: mode === 'production' ? '/static/' : '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    // Ensure assets work with relative paths
+    rollupOptions: {
+      output: {
+        assetFileNames: 'assets/[name].[hash].[ext]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js',
+      }
+    }
+  },
   plugins: [
     react(),
     mode === 'development' &&

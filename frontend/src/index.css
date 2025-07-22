@@ -2,92 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Scientific Simulation Design System - Dark theme optimized for data visualization */
-
-@layer base {
-  :root {
-    /* Dark scientific theme base */
-    --background: 220 15% 6%;
-    --foreground: 220 15% 95%;
-
-    --card: 220 15% 8%;
-    --card-foreground: 220 15% 95%;
-
-    --popover: 220 15% 8%;
-    --popover-foreground: 220 15% 95%;
-
-    --primary: 200 95% 65%;
-    --primary-foreground: 220 15% 6%;
-
-    --secondary: 220 15% 12%;
-    --secondary-foreground: 220 15% 85%;
-
-    --muted: 220 15% 10%;
-    --muted-foreground: 220 15% 65%;
-
-    --accent: 280 85% 70%;
-    --accent-foreground: 220 15% 6%;
-
-    --destructive: 0 75% 60%;
-    --destructive-foreground: 220 15% 95%;
-
-    --border: 220 15% 20%;
-    --input: 220 15% 12%;
-    --ring: 200 95% 65%;
-
-    --radius: 0.75rem;
-
-    /* Simulation-specific colors */
-    --ant-rule-based: 210 85% 65%;
-    --ant-llm: 0 80% 65%;
-    --ant-hybrid: 280 85% 70%;
-    --food-color: 120 70% 55%;
-    --grid-cell: 220 15% 12%;
-    --grid-border: 220 15% 25%;
-
-    /* Sidebar colors */
-    --sidebar-background: 220 15% 8%;
-    --sidebar-foreground: 220 15% 90%;
-    --sidebar-primary: 200 95% 65%;
-    --sidebar-primary-foreground: 220 15% 6%;
-    --sidebar-accent: 220 15% 12%;
-    --sidebar-accent-foreground: 220 15% 90%;
-    --sidebar-border: 220 15% 20%;
-    --sidebar-ring: 200 95% 65%;
-
-    /* Gradients for visual appeal */
-    --gradient-primary: linear-gradient(135deg, hsl(200 95% 65%), hsl(240 85% 70%));
-    --gradient-simulation: linear-gradient(180deg, hsl(220 15% 8%), hsl(220 15% 6%));
-    --gradient-sidebar: linear-gradient(180deg, hsl(220 15% 8%), hsl(220 15% 10%));
-
-    /* Shadows for depth */
-    --shadow-simulation: 0 8px 32px hsl(200 95% 65% / 0.2);
-    --shadow-card: 0 4px 16px hsl(220 15% 0% / 0.3);
-    --shadow-hover: 0 8px 24px hsl(200 95% 65% / 0.3);
-
-    /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-fast: all 0.15s ease-out;
-  }
-
-  /* Light theme fallback (minimal changes) */
-  .light {
-    --background: 220 15% 98%;
-    --foreground: 220 15% 8%;
-    --card: 220 15% 100%;
-    --card-foreground: 220 15% 8%;
-    --border: 220 15% 85%;
-    --grid-cell: 220 15% 96%;
-    --grid-border: 220 15% 80%;
-  }
+@keyframes pulse {
+  0% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.2); }
+  100% { opacity: 0.4; transform: scale(1); }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+/* Scientific Simulation Design System - Nature & Ant Colony Theme */
+:root {
+  --background: 45 27% 94%; /* Warm sandy beige */
+  --foreground: 25 15% 15%; /* Dark brown */
+  --card: 45 30% 96%; /* Light sandy */
+  --card-foreground: 25 15% 15%;
+  --popover: 45 30% 96%;
+  --popover-foreground: 25 15% 15%;
+  --primary: 35 60% 45%; /* Rich amber */
+  --primary-foreground: 45 27% 94%;
+  --secondary: 30 40% 85%; /* Warm light brown */
+  --secondary-foreground: 25 15% 15%;
+  --muted: 45 25% 90%; /* Muted sandy */
+  --muted-foreground: 25 20% 40%;
+  --accent: 35 50% 80%; /* Light amber */
+  --accent-foreground: 25 15% 15%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 45 27% 94%;
+  --border: 45 25% 85%; /* Sandy border */
+  --input: 45 25% 90%;
+  --ring: 35 60% 45%;
+  --radius: 0.5rem;
+}
 
-  body {
-    @apply bg-background text-foreground;
-  }
+.dark {
+  --background: 25 15% 8%; /* Dark brown */
+  --foreground: 45 25% 90%; /* Light sandy */
+  --card: 25 15% 12%; /* Darker brown */
+  --card-foreground: 45 25% 90%;
+  --popover: 25 15% 12%;
+  --popover-foreground: 45 25% 90%;
+  --primary: 35 60% 55%; /* Brighter amber for dark mode */
+  --primary-foreground: 25 15% 8%;
+  --secondary: 25 20% 18%; /* Dark brown */
+  --secondary-foreground: 45 25% 90%;
+  --muted: 25 15% 15%; /* Dark muted */
+  --muted-foreground: 45 25% 70%;
+  --accent: 35 40% 25%; /* Dark amber */
+  --accent-foreground: 45 25% 90%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 45 25% 90%;
+  --border: 25 15% 20%; /* Dark border */
+  --input: 25 15% 15%;
+  --ring: 35 60% 55%;
+}
+
+/* Nature-themed scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
+}
+
+/* Ant colony background pattern */
+.ant-colony-bg {
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(210, 180, 140, 0.05) 0%, transparent 50%);
+}
+
+/* Sandy texture overlay */
+.sandy-texture {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
 }

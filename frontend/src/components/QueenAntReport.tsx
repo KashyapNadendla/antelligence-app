@@ -24,13 +24,26 @@ export const QueenAntReport = ({ isVisible, report }: QueenAntReportProps) => {
 
       <div className="p-4">
         {report ? (
-          <pre className="text-xs whitespace-pre-wrap bg-card/50 p-3 rounded-lg border">
-            {report}
-          </pre>
+          <div className="space-y-3">
+            <pre className="text-xs whitespace-pre-wrap bg-card/50 p-3 rounded-lg border">
+              {report}
+            </pre>
+            <div className="text-xs text-muted-foreground">
+              <p>📊 Report received at: {new Date().toLocaleTimeString()}</p>
+              <p>📝 Report length: {report.length} characters</p>
+            </div>
+          </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            No report available. Run a simulation with an active Queen to see her analysis.
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              No report available. Run a simulation with an active Queen to see her analysis.
+            </p>
+            <div className="text-xs text-muted-foreground bg-card/50 p-2 rounded">
+              <p>🔍 Debug Info:</p>
+              <p>• Report value: {report === null ? 'null' : report === '' ? 'empty string' : 'other'}</p>
+              <p>• Component visible: {isVisible ? 'Yes' : 'No'}</p>
+            </div>
+          </div>
         )}
       </div>
     </div>

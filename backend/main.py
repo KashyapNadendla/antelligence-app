@@ -1,22 +1,82 @@
 # main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from simulation import SimpleForagingModel
-from schemas import (
-    SimulationConfig, SimulationResult, StepState, AntState, 
-    ComparisonConfig, ComparisonResult, FoodDepletionPoint,
-    PerformanceData, PheromoneMapData, ForagingEfficiencyData,
-    PheromoneConfigUpdate
-)
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+import uvicorn
+import os
+import sys
 import numpy as np
 import random
 import traceback
+import openai
+from dotenv import load_dotenv
+
+# Add the current directory to Python path for local development
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from backend.simulation import SimpleForagingModel
+    from backend.schemas import (
+        SimulationConfig, SimulationResult, StepState, AntState, 
+        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
+        ComparisonConfig, ComparisonResult, PerformanceData,
+        PheromoneConfigUpdate, PredatorState
+    )
+except ImportError:
+    # Fallback for local development
+    from simulation import SimpleForagingModel
+    from schemas import (
+        SimulationConfig, SimulationResult, StepState, AntState, 
+        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
+        ComparisonConfig, ComparisonResult, PerformanceData,
+        PheromoneConfigUpdate, PredatorState
+    )
+
+# Load environment variables
+load_dotenv()
+
+# Get API key from environment
+IO_API_KEY = os.getenv("IO_SECRET_KEY")
+
+# --- Blockchain Integration ---
+BLOCKCHAIN_ENABLED = False
+try:
+    from blockchain.client import w3, acct, MEMORY_CONTRACT_ADDRESS
+    BLOCKCHAIN_ENABLED = True
+    print("✅ Blockchain client loaded successfully!")
+except ImportError as e:
+    print(f"⚠️ Blockchain client import failed: {e}. Blockchain features will use simulated transactions.")
+    BLOCKCHAIN_ENABLED = False
+except Exception as e:
+    print(f"⚠️ Blockchain client could not be loaded: {e}. Blockchain features will use simulated transactions.")
+    BLOCKCHAIN_ENABLED = False
 
 app = FastAPI(
-    title="🐜 Ant Foraging Simulation API",
-    description="An API to run autonomous agent simulations powered by IO Intelligence.",
+    title="Antelligence API",
+    description="AI-Powered Ant Colony Simulation with Blockchain Integration",
     version="1.0.0"
 )
+
+# Mount static files (frontend build)
+try:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+except Exception as e:
+    print(f"Warning: Could not mount static files: {e}")
+
+# Serve index.html for root path
+@app.get("/")
+async def read_root():
+    try:
+        return FileResponse("static/index.html")
+    except Exception as e:
+        return {"message": "Frontend not built. Please build the frontend first.", "error": str(e)}
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "antelligence-api"}
 
 # Define the list of allowed origins for CORS
 origins = [
@@ -41,10 +101,12 @@ def convert_pheromone_maps(model) -> PheromoneMapData:
         trail=model.pheromone_map['trail'].T.tolist(),  # Transpose for correct orientation
         alarm=model.pheromone_map['alarm'].T.tolist(),
         recruitment=model.pheromone_map['recruitment'].T.tolist(),
+        fear=model.pheromone_map.get('fear', np.zeros_like(model.pheromone_map['trail'])).T.tolist(),
         max_values={
             'trail': float(np.max(model.pheromone_map['trail'])),
             'alarm': float(np.max(model.pheromone_map['alarm'])),
-            'recruitment': float(np.max(model.pheromone_map['recruitment']))
+            'recruitment': float(np.max(model.pheromone_map['recruitment'])),
+            'fear': float(np.max(model.pheromone_map.get('fear', np.zeros_like(model.pheromone_map['trail']))))
         }
     )
 
@@ -117,6 +179,7 @@ async def run_simulation(config: SimulationConfig):
     """
     try:
         print(f"[SIMULATION] Starting simulation with config: {config.dict()}")
+        print(f"[BLOCKCHAIN] Backend blockchain enabled: {BLOCKCHAIN_ENABLED}")
         np.random.seed(42)
         random.seed(42)
 
@@ -129,7 +192,9 @@ async def run_simulation(config: SimulationConfig):
             with_queen=config.use_queen,
             use_llm_queen=config.use_llm_queen,
             selected_model_param=config.selected_model,
-            prompt_style_param=config.prompt_style
+            prompt_style_param=config.prompt_style,
+            N_predators=config.n_predators if config.enable_predators else 0,
+            predator_type=config.predator_type
         )
         
         # Apply pheromone configuration
@@ -138,7 +203,8 @@ async def run_simulation(config: SimulationConfig):
             config.trail_deposit,
             config.alarm_deposit, 
             config.recruitment_deposit,
-            config.max_pheromone_value
+            config.max_pheromone_value,
+            config.fear_deposit
         )
         
         print(f"[SIMULATION] Model initialized. API enabled: {model.api_enabled}")
@@ -179,6 +245,19 @@ async def run_simulation(config: SimulationConfig):
                 )
                 ants_list.append(queen_state)
             
+            # --- Create the list of predators for the current step ---
+            predators_list = [
+                PredatorState(
+                    id=predator.unique_id,
+                    pos=predator.pos,
+                    energy=predator.energy,
+                    is_llm=predator.is_llm_controlled,
+                    ants_caught=predator.ants_caught,
+                    hunt_cooldown=predator.hunt_cooldown
+                )
+                for predator in model.predators
+            ]
+            
             # Capture detailed state periodically or for final step
             capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
             pheromone_data = None
@@ -192,6 +271,7 @@ async def run_simulation(config: SimulationConfig):
             current_state = StepState(
                 step=model.step_count,
                 ants=ants_list,
+                predators=predators_list,
                 food_positions=model.get_food_positions(),
                 metrics=model.metrics.copy(),
                 queen_report=model.queen_llm_anomaly_rep,
@@ -215,6 +295,14 @@ async def run_simulation(config: SimulationConfig):
         final_pheromone_data = convert_pheromone_maps(model)
         final_efficiency_data = convert_efficiency_data(model)
 
+        # Collect blockchain logs (always enabled)
+        blockchain_logs = []
+        if hasattr(model, 'blockchain_logs'):
+            blockchain_logs = model.blockchain_logs
+            print(f"[BLOCKCHAIN] Collected {len(blockchain_logs)} blockchain logs")
+        else:
+            print(f"[BLOCKCHAIN] No blockchain logs attribute found on model")
+
         return SimulationResult(
             config=config,
             total_steps_run=model.step_count,
@@ -223,7 +311,8 @@ async def run_simulation(config: SimulationConfig):
             food_depletion_history=food_depletion_data,
             initial_food_count=model.initial_food_count,
             final_pheromone_data=final_pheromone_data,
-            final_efficiency_data=final_efficiency_data
+            final_efficiency_data=final_efficiency_data,
+            blockchain_logs=blockchain_logs
         )
 
     except Exception as e:
@@ -234,29 +323,56 @@ async def run_simulation(config: SimulationConfig):
 
 def _run_comparison_leg(params: dict, steps: int) -> int:
     """Helper to run one leg of the comparison."""
-    np.random.seed(42)
-    random.seed(42)
-    model = SimpleForagingModel(
-        width=params['grid_width'], height=params['grid_height'], N_ants=params['n_ants'],
-        N_food=params['n_food'], agent_type=params['agent_type'], with_queen=params['with_queen'],
-        use_llm_queen=params['use_llm_queen'], selected_model_param=params['selected_model'],
-        prompt_style_param=params['prompt_style']
-    )
-    
-    # Apply pheromone parameters if provided
-    if 'pheromone_decay_rate' in params:
-        model.set_pheromone_params(
-            params['pheromone_decay_rate'],
-            params['trail_deposit'],
-            params['alarm_deposit'],
-            params['recruitment_deposit'],
-            params['max_pheromone_value']
+    try:
+        print(f"[QUEEN COMPARISON] Starting leg with params: {params}")
+        np.random.seed(42)
+        random.seed(42)
+        
+        # Force rule-based agents for comparison to avoid API timeouts
+        comparison_params = params.copy()
+        comparison_params['agent_type'] = 'Rule-Based'  # Use rule-based for reliable comparison
+        
+        model = SimpleForagingModel(
+            width=comparison_params['grid_width'], 
+            height=comparison_params['grid_height'], 
+            N_ants=comparison_params['n_ants'],
+            N_food=comparison_params['n_food'], 
+            agent_type=comparison_params['agent_type'], 
+            with_queen=comparison_params['with_queen'],
+            use_llm_queen=comparison_params['use_llm_queen'], 
+            selected_model_param=comparison_params['selected_model'],
+            prompt_style_param=comparison_params['prompt_style'],
+            N_predators=comparison_params.get('n_predators', 0),
+            predator_type=comparison_params.get('predator_type', 'Rule-Based')
         )
-    
-    for _ in range(steps):
-        if not model.foods: break
-        model.step()
-    return model.metrics["food_collected"]
+        
+        # Apply pheromone parameters if provided
+        if 'pheromone_decay_rate' in comparison_params:
+            model.set_pheromone_params(
+                comparison_params['pheromone_decay_rate'],
+                comparison_params['trail_deposit'],
+                comparison_params['alarm_deposit'],
+                comparison_params['recruitment_deposit'],
+                comparison_params['max_pheromone_value'],
+                comparison_params.get('fear_deposit', 3.0)
+            )
+        
+        print(f"[QUEEN COMPARISON] Running {steps} steps with rule-based agents...")
+        for step in range(steps):
+            if not model.foods: 
+                print(f"[QUEEN COMPARISON] No food remaining at step {step}")
+                break
+            model.step()
+            if step % 10 == 0:  # Log every 10 steps
+                print(f"[QUEEN COMPARISON] Step {step}/{steps}, food remaining: {len(model.foods)}")
+        
+        result = model.metrics["food_collected"]
+        print(f"[QUEEN COMPARISON] Completed with {result} food collected")
+        return result
+        
+    except Exception as e:
+        print(f"[QUEEN COMPARISON] Error in comparison leg: {str(e)}")
+        raise e
 
 @app.post("/simulation/compare", response_model=ComparisonResult)
 async def compare_queen_performance(config: ComparisonConfig):
@@ -264,20 +380,45 @@ async def compare_queen_performance(config: ComparisonConfig):
     Runs two simulations in parallel to compare the effectiveness of the Queen Ant.
     """
     try:
+        print(f"[QUEEN COMPARISON] Starting comparison with {config.comparison_steps} steps")
         base_params = config.dict()
         
-        queen_params = {**base_params, 'with_queen': True}
-        food_with_queen = _run_comparison_leg(queen_params, config.comparison_steps)
+        # Add timeout protection
+        import signal
+        import time
         
-        no_queen_params = {**base_params, 'with_queen': False, 'use_llm_queen': False}
-        food_no_queen = _run_comparison_leg(no_queen_params, config.comparison_steps)
-
-        return ComparisonResult(
-            food_collected_with_queen=food_with_queen,
-            food_collected_no_queen=food_no_queen,
-            config=config
-        )
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Queen comparison timed out")
+        
+        # Set timeout to 60 seconds
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(60)
+        
+        try:
+            print(f"[QUEEN COMPARISON] Running simulation WITH queen...")
+            queen_params = {**base_params, 'with_queen': True}
+            food_with_queen = _run_comparison_leg(queen_params, config.comparison_steps)
+            
+            print(f"[QUEEN COMPARISON] Running simulation WITHOUT queen...")
+            no_queen_params = {**base_params, 'with_queen': False, 'use_llm_queen': False}
+            food_no_queen = _run_comparison_leg(no_queen_params, config.comparison_steps)
+            
+            # Cancel timeout
+            signal.alarm(0)
+            
+            print(f"[QUEEN COMPARISON] Results - With Queen: {food_with_queen}, Without Queen: {food_no_queen}")
+            
+            return ComparisonResult(
+                food_collected_with_queen=food_with_queen,
+                food_collected_no_queen=food_no_queen,
+                config=config
+            )
+        except TimeoutError:
+            signal.alarm(0)
+            raise HTTPException(status_code=408, detail="Queen comparison timed out after 60 seconds")
+            
     except Exception as e:
+        print(f"[QUEEN COMPARISON] Error in comparison: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/simulation/performance", response_model=PerformanceData)
@@ -298,7 +439,9 @@ async def get_performance_analysis(config: SimulationConfig):
             with_queen=config.use_queen,
             use_llm_queen=config.use_llm_queen,
             selected_model_param=config.selected_model,
-            prompt_style_param=config.prompt_style
+            prompt_style_param=config.prompt_style,
+            N_predators=config.n_predators if config.enable_predators else 0,
+            predator_type=config.predator_type
         )
         
         # Apply pheromone configuration
@@ -307,7 +450,8 @@ async def get_performance_analysis(config: SimulationConfig):
             config.trail_deposit,
             config.alarm_deposit,
             config.recruitment_deposit,
-            config.max_pheromone_value
+            config.max_pheromone_value,
+            config.fear_deposit
         )
         
         for _ in range(config.max_steps):
@@ -350,7 +494,3 @@ async def get_performance_analysis(config: SimulationConfig):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Ant Foraging Simulation API. See /docs for endpoints."}

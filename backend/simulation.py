@@ -38,33 +38,51 @@ class SimpleAntAgent:
             # Deposit trail pheromone when at a food source
             self.model.deposit_pheromone(self.pos, 'trail', self.model.trail_deposit * 1.5)
 
-        if guided_pos and guided_pos in possible_steps + [self.pos]:
-            # Queen guidance takes priority
-            new_position = guided_pos
-        elif self.is_llm_controlled and self.model.io_client and self.model.api_enabled:
-            try:
-                action = self.ask_io_for_decision(self.model.prompt_style, self.model.selected_model)
-                self.api_calls += 1
-                if action == "toward" and possible_steps:
-                    target_food = self._find_nearest_food()
-                    if target_food:
-                        new_position = self._step_toward(self.pos, target_food)
-                    else:
-                        new_position = choice(possible_steps)
-                elif action == "random" and possible_steps:
-                    new_position = choice(possible_steps)
-                elif action == "stay":
-                    new_position = self.pos
-                else:
-                    new_position = choice(possible_steps) if possible_steps else self.pos
-            except Exception as e:
-                # Deposit alarm pheromone on API error
-                self.model.deposit_pheromone(self.pos, 'alarm', self.model.alarm_deposit * 1.5)
-                self.model.log_error(f"API call failed for ant {self.unique_id}: {str(e)}. Falling back to rule-based.")
-                new_position = self._use_rule_based_behavior(possible_steps)
+        # PRIORITY 1: Pick up food if we're standing on it (even with predators nearby!)
+        if self.model.is_food_at(self.pos) and not self.carrying_food:
+            new_position = self.pos  # Stay to pick up food
         else:
-            # Rule-based behavior
-            new_position = self._use_rule_based_behavior(possible_steps)
+            # Check for immediate predator threat (second priority)
+            nearby_predators = [p for p in self.model.predators 
+                               if abs(p.pos[0] - x) <= 2 and abs(p.pos[1] - y) <= 2]
+            
+            if nearby_predators and possible_steps:
+                # ESCAPE! Move away from nearest predator
+                nearest_predator = min(nearby_predators, 
+                                     key=lambda p: abs(p.pos[0] - x) + abs(p.pos[1] - y))
+                # Find position that maximizes distance from predator
+                escape_pos = max(possible_steps + [self.pos], 
+                               key=lambda pos: abs(pos[0] - nearest_predator.pos[0]) + abs(pos[1] - nearest_predator.pos[1]))
+                new_position = escape_pos
+                # Deposit alarm pheromone when escaping
+                self.model.deposit_pheromone(self.pos, 'alarm', self.model.alarm_deposit * 2)
+            elif guided_pos and guided_pos in possible_steps + [self.pos]:
+                # Queen guidance takes priority (when not escaping)
+                new_position = guided_pos
+            elif self.is_llm_controlled and self.model.io_client and self.model.api_enabled:
+                try:
+                    action = self.ask_io_for_decision(self.model.prompt_style, self.model.selected_model)
+                    self.api_calls += 1
+                    if action == "toward" and possible_steps:
+                        target_food = self._find_nearest_food()
+                        if target_food:
+                            new_position = self._step_toward(self.pos, target_food)
+                        else:
+                            new_position = choice(possible_steps)
+                    elif action == "random" and possible_steps:
+                        new_position = choice(possible_steps)
+                    elif action == "stay":
+                        new_position = self.pos
+                    else:
+                        new_position = choice(possible_steps) if possible_steps else self.pos
+                except Exception as e:
+                    # Deposit alarm pheromone on API error
+                    self.model.deposit_pheromone(self.pos, 'alarm', self.model.alarm_deposit * 1.5)
+                    self.model.log_error(f"API call failed for ant {self.unique_id}: {str(e)}. Falling back to rule-based.")
+                    new_position = self._use_rule_based_behavior(possible_steps)
+            else:
+                # Rule-based behavior
+                new_position = self._use_rule_based_behavior(possible_steps)
 
         self.move_history.append(self.pos)
         self.pos = new_position
@@ -134,11 +152,17 @@ class SimpleAntAgent:
         # Get local pheromone information
         local_pheromones = self.model.get_local_pheromones(self.pos, radius=2)
         
+        # Check for nearby predators
+        nearby_predators = [p for p in self.model.predators 
+                           if abs(p.pos[0] - x) <= 3 and abs(p.pos[1] - y) <= 3]
+        
         pheromone_info = (
             f"Local Pheromones (radius 2): "
             f"Trail: {local_pheromones['trail']:.2f}, "
             f"Alarm: {local_pheromones['alarm']:.2f}, "
-            f"Recruitment: {local_pheromones['recruitment']:.2f}. "
+            f"Recruitment: {local_pheromones['recruitment']:.2f}, "
+            f"Fear: {local_pheromones.get('fear', 0):.2f}. "
+            f"Predators nearby: {len(nearby_predators)}. "
         )
 
         if prompt_style_param == "Structured":
@@ -147,24 +171,32 @@ class SimpleAntAgent:
                 f"Food nearby: {food_nearby}. Carrying food: {self.carrying_food}. "
                 f"{pheromone_info}"
                 "Should you move 'toward' food, move 'random', or 'stay'? "
-                "Consider pheromones: high trail=good path, high alarm=danger, high recruitment=help needed. "
+                "Consider: High trail=good path, high alarm=danger, high recruitment=help needed, high fear=predators! "
+                "PRIORITY: Avoid areas with high fear pheromone (predators). "
                 "Reply with only one word: 'toward', 'random', or 'stay'."
             )
         elif prompt_style_param == "Autonomous":
             prompt = (
-                f"As an autonomous ant at ({x},{y}), food nearby: {food_nearby}, carrying: {self.carrying_food}. "
+                f"As an autonomous ant foraging for food, my current state is: "
+                f"Position: ({x},{y}), "
+                f"Food available nearby: {food_nearby}, "
+                f"Currently carrying food: {self.carrying_food}. "
                 f"{pheromone_info}"
-                "Best action to maximize collection? 'toward', 'random', or 'stay'. "
-                "Interpret pheromones: trail=success path, alarm=avoid, recruitment=assist."
+                "What is the best action? Choose: 'toward', 'random', or 'stay'. "
+                "Pheromone signals: Trail=good path, alarm=danger, recruitment=help needed, fear=PREDATORS (avoid!). "
+                "Survival is priority #1 - avoid fear pheromone areas."
             )
         else:  # Adaptive
             efficiency = self.food_collected_count
             prompt = (
-                f"Ant {self.unique_id} (collected {efficiency}) at ({x},{y}). "
-                f"Food nearby: {food_nearby}. Carrying: {self.carrying_food}. "
+                f"Ant {self.unique_id} has collected {efficiency} food items. "
+                f"Current position: ({x},{y}). "
+                f"Food nearby: {food_nearby}. "
+                f"Carrying food: {self.carrying_food}. "
                 f"{pheromone_info}"
-                "Best action? 'toward', 'random', 'stay'. "
-                "Use pheromones: follow trails, avoid alarms, respond to recruitment."
+                "Best action? Options: 'toward', 'random', 'stay'. "
+                "Pheromone guide: Follow trails, avoid alarms/fear (predators!), respond to recruitment. "
+                "Stay alive first, then collect food."
             )
 
         try:
@@ -185,6 +217,187 @@ class SimpleAntAgent:
             self.model.deposit_pheromone(self.pos, 'alarm', self.model.alarm_deposit * 1.5)
             self.model.log_error(f"LLM call failed for Ant {self.unique_id}: {str(e)}")
             return "random"
+
+# Predator agent class
+class PredatorAgent:
+    def __init__(self, unique_id, model, is_llm_controlled=True):
+        self.unique_id = unique_id
+        self.model = model
+        self.pos = (np.random.randint(model.width), np.random.randint(model.height))
+        self.is_llm_controlled = is_llm_controlled
+        self.api_calls = 0
+        self.energy = 100  # Energy for hunting
+        self.hunt_cooldown = 0  # Cooldown between hunts
+        self.ants_caught = 0
+        self.move_history = []
+        self.hunting_range = 2  # How close predator needs to be to catch ant
+
+    def step(self):
+        x, y = self.pos
+        possible_steps = self.model.get_neighborhood(x, y)
+        new_position = self.pos
+
+        # Reduce cooldown and restore energy over time
+        if self.hunt_cooldown > 0:
+            self.hunt_cooldown -= 1
+        if self.energy < 100:
+            self.energy = min(100, self.energy + 2)
+
+        # Deposit fear pheromone at current position
+        self.model.deposit_pheromone(self.pos, 'fear', self.model.fear_deposit)
+
+        if self.is_llm_controlled and self.model.io_client and self.model.api_enabled:
+            try:
+                action = self.ask_io_for_decision(self.model.prompt_style, self.model.selected_model)
+                self.api_calls += 1
+                if action == "hunt" and possible_steps:
+                    target_ant = self._find_nearest_ant()
+                    if target_ant:
+                        new_position = self._step_toward(self.pos, target_ant.pos)
+                    else:
+                        new_position = choice(possible_steps)
+                elif action == "patrol" and possible_steps:
+                    # Patrol behavior - move to areas with less fear pheromone
+                    new_position = self._patrol_behavior(possible_steps)
+                elif action == "rest":
+                    new_position = self.pos
+                else:
+                    new_position = choice(possible_steps) if possible_steps else self.pos
+            except Exception as e:
+                # Fallback to rule-based behavior on API error
+                new_position = self._use_rule_based_behavior(possible_steps)
+        else:
+            # Rule-based predator behavior
+            new_position = self._use_rule_based_behavior(possible_steps)
+
+        self.move_history.append(self.pos)
+        self.pos = new_position
+
+        # Try to catch ants in hunting range
+        self._attempt_hunt()
+
+    def _find_nearest_ant(self):
+        if not self.model.ants:
+            return None
+        return min(self.model.ants,
+                   key=lambda ant: abs(ant.pos[0]-self.pos[0]) + abs(ant.pos[1]-self.pos[1]))
+
+    def _step_toward(self, start, target):
+        x, y = start
+        tx, ty = target
+        possible_moves = self.model.get_neighborhood(x, y)
+        if not possible_moves:
+            return start
+        return min(possible_moves, key=lambda n: abs(n[0]-tx)+abs(n[1]-ty))
+
+    def _patrol_behavior(self, possible_steps):
+        # Move to areas with less fear pheromone to spread hunting pressure
+        best_pos = self.pos
+        min_fear = float('inf')
+        
+        for pos in possible_steps + [self.pos]:
+            if 0 <= pos[0] < self.model.width and 0 <= pos[1] < self.model.height:
+                fear_level = self.model.pheromone_map['fear'][pos[0], pos[1]]
+                if fear_level < min_fear:
+                    min_fear = fear_level
+                    best_pos = pos
+        
+        return best_pos
+
+    def _use_rule_based_behavior(self, possible_steps):
+        # Rule-based: hunt if energy is high, patrol otherwise
+        if self.energy > 50 and self.hunt_cooldown == 0:
+            target_ant = self._find_nearest_ant()
+            if target_ant:
+                # Move toward nearest ant
+                return self._step_toward(self.pos, target_ant.pos)
+        
+        # Otherwise patrol
+        return self._patrol_behavior(possible_steps) if possible_steps else self.pos
+
+    def _attempt_hunt(self):
+        if self.hunt_cooldown > 0 or self.energy < 30:
+            return
+        
+        # Check for ants within hunting range
+        for ant in self.model.ants[:]:  # Use slice to avoid modification during iteration
+            distance = abs(ant.pos[0] - self.pos[0]) + abs(ant.pos[1] - self.pos[1])
+            if distance <= self.hunting_range:
+                # Successful hunt!
+                self.model.ants.remove(ant)
+                self.ants_caught += 1
+                self.energy = min(100, self.energy + 20)  # Gain energy from hunting
+                self.hunt_cooldown = 5  # Cooldown before next hunt
+                self.model.metrics["ants_caught"] += 1
+                
+                # Update ant type specific metrics
+                if ant.is_llm_controlled:
+                    self.model.metrics["llm_ants_caught"] += 1
+                else:
+                    self.model.metrics["rule_ants_caught"] += 1
+                
+                # Deposit strong fear pheromone at hunt location
+                self.model.deposit_pheromone(self.pos, 'fear', self.model.fear_deposit * 3)
+                break  # Only catch one ant per step
+
+    def ask_io_for_decision(self, prompt_style_param, selected_model_param):
+        x, y = self.pos
+        nearby_ants = [ant for ant in self.model.ants 
+                      if abs(ant.pos[0] - x) <= 3 and abs(ant.pos[1] - y) <= 3]
+        
+        # Get local pheromone information
+        local_pheromones = self.model.get_local_pheromones(self.pos, radius=2)
+        
+        pheromone_info = (
+            f"Local Pheromones: "
+            f"Fear: {local_pheromones.get('fear', 0):.2f}, "
+            f"Trail: {local_pheromones.get('trail', 0):.2f}. "
+        )
+
+        if prompt_style_param == "Structured":
+            prompt = (
+                f"You are a predator at position ({x},{y}) on a {self.model.width}x{self.model.height} grid. "
+                f"Nearby ants: {len(nearby_ants)}. Energy: {self.energy}/100. Hunt cooldown: {self.hunt_cooldown}. "
+                f"{pheromone_info}"
+                "Should you 'hunt' ants, 'patrol' territory, or 'rest'? "
+                f"High fear pheromone means you've been here recently. Trail pheromone indicates ant activity. "
+                "Reply with only one word: 'hunt', 'patrol', or 'rest'."
+            )
+        elif prompt_style_param == "Autonomous":
+            prompt = (
+                f"As an autonomous predator, my state is: "
+                f"Position: ({x},{y}), "
+                f"Nearby prey: {len(nearby_ants)} ants, "
+                f"Energy: {self.energy}/100, Hunt cooldown: {self.hunt_cooldown}. "
+                f"{pheromone_info}"
+                "What is the optimal strategy? Choose: 'hunt', 'patrol', or 'rest'. "
+                "Consider energy management and territorial coverage."
+            )
+        else:  # Adaptive
+            success_rate = self.ants_caught / max(1, len(self.move_history))
+            prompt = (
+                f"Predator {self.unique_id} has caught {self.ants_caught} ants with success rate {success_rate:.2f}. "
+                f"Current position: ({x},{y}). "
+                f"Nearby ants: {len(nearby_ants)}. Energy: {self.energy}/100. "
+                f"{pheromone_info}"
+                "Best hunting strategy? Options: 'hunt', 'patrol', 'rest'. "
+                "Adapt based on your success rate and current conditions."
+            )
+
+        try:
+            response = self.model.io_client.chat.completions.create(
+                model=selected_model_param,
+                messages=[
+                    {"role": "system", "content": "You are an intelligent predator. Respond with only one word: hunt, patrol, or rest."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
+                max_completion_tokens=10
+            )
+            action = response.choices[0].message.content.strip().lower()
+            return action if action in ["hunt", "patrol", "rest"] else "hunt"
+        except Exception as e:
+            return "hunt"  # Default to hunting on error
 
 
 class QueenAnt:
@@ -209,21 +422,38 @@ class QueenAnt:
         ants = self.model.ants
         foods = list(self.model.foods)
         
+        if not foods:
+            self.model.queen_llm_anomaly_rep = "No food remaining - no guidance needed"
+            return guidance
+        
+        # More sophisticated heuristic guidance
         for ant in ants:
-            if foods:
-                target = min(
-                    foods,
-                    key=lambda f: abs(f[0]-ant.pos[0]) + abs(f[1]-ant.pos[1])
-                )
+            if ant.carrying_food:
+                # If ant is carrying food, guide it toward the nest (center)
+                nest_pos = (self.model.width // 2, self.model.height // 2)
                 possible_moves = self.model.get_neighborhood(*ant.pos) + [ant.pos]
                 if possible_moves:
                     best_step = min(
                         possible_moves,
-                        key=lambda n: abs(n[0]-target[0]) + abs(n[1]-target[1])
+                        key=lambda n: abs(n[0]-nest_pos[0]) + abs(n[1]-nest_pos[1])
                     )
                     guidance[ant.unique_id] = best_step
+            else:
+                # If ant is not carrying food, guide it toward nearest food
+                if foods:
+                    target = min(
+                        foods,
+                        key=lambda f: abs(f[0]-ant.pos[0]) + abs(f[1]-ant.pos[1])
+                    )
+                    possible_moves = self.model.get_neighborhood(*ant.pos) + [ant.pos]
+                    if possible_moves:
+                        best_step = min(
+                            possible_moves,
+                            key=lambda n: abs(n[0]-target[0]) + abs(n[1]-target[1])
+                        )
+                        guidance[ant.unique_id] = best_step
         
-        self.model.queen_llm_anomaly_rep = f"Heuristic guidance provided for {len(guidance)} ants"
+        self.model.queen_llm_anomaly_rep = f"Queen heuristic guidance: Directed {len(guidance)} ants ({len([a for a in ants if a.carrying_food])} carrying food, {len([a for a in ants if not a.carrying_food])} foraging)"
         return guidance
 
     def _guide_with_llm(self, selected_model_param) -> dict:
@@ -324,7 +554,8 @@ Ant positions:"""
 class SimpleForagingModel:
     def __init__(self, width, height, N_ants, N_food,
                  agent_type="LLM-Powered", with_queen=False, use_llm_queen=False,
-                 selected_model_param="meta-llama/Llama-3.3-70B-Instruct", prompt_style_param="Adaptive"):
+                 selected_model_param="meta-llama/Llama-3.3-70B-Instruct", prompt_style_param="Adaptive",
+                 N_predators=0, predator_type="LLM-Powered"):
         self.width = width
         self.height = height
         
@@ -344,7 +575,10 @@ class SimpleForagingModel:
             "avg_response_time": 0,
             "food_collected_by_llm": 0,
             "food_collected_by_rule": 0,
-            "ants_carrying_food": 0
+            "ants_carrying_food": 0,
+            "ants_caught": 0,
+            "llm_ants_caught": 0,
+            "rule_ants_caught": 0
         }
         self.with_queen = with_queen
         self.use_llm_queen = use_llm_queen
@@ -355,13 +589,15 @@ class SimpleForagingModel:
         self.pheromone_map = {
             'trail': np.zeros((width, height)),
             'alarm': np.zeros((width, height)),
-            'recruitment': np.zeros((width, height))
+            'recruitment': np.zeros((width, height)),
+            'fear': np.zeros((width, height)) # Added fear pheromone
         }
         self.pheromone_decay_rate = 0.05  # 5% decay per step
         self.trail_deposit = 1.0
         self.alarm_deposit = 2.0
         self.recruitment_deposit = 1.5
         self.max_pheromone_value = 10.0
+        self.fear_deposit = 3.0 # Fear pheromone deposit amount
 
         # Foraging efficiency grid
         self.foraging_efficiency_grid = np.zeros((width, height))
@@ -373,6 +609,16 @@ class SimpleForagingModel:
         self.queen_llm_anomaly_rep = "Queen's report will appear here when queen is active"
         self.food_depletion_history = []
         self.initial_food_count = N_food
+
+        # Initialize blockchain logs
+        self.blockchain_logs = []
+        self.enable_blockchain = True  # Always enabled
+        self.food_collection_count = 0  # Debug counter
+        
+        # Add test blockchain log
+        test_tx = f"0x{hash('test_init') % (2**64):016x}"
+        self.blockchain_logs.append(f"Blockchain integration initialized. Test Tx: {test_tx}")
+        print(f"[BLOCKCHAIN] Initialized with test transaction: {test_tx}")
 
         # Initialize IO client with safety checks
         self.api_enabled = False
@@ -402,7 +648,26 @@ class SimpleForagingModel:
                 is_llm = i < N_ants // 2
                 self.ants.append(SimpleAntAgent(i, self, is_llm))
 
+        # Create predators based on type
+        self.predators = []
+        if N_predators > 0:
+            if predator_type == "LLM-Powered":
+                self.predators = [PredatorAgent(i + 1000, self, True) for i in range(N_predators)]
+            elif predator_type == "Rule-Based":
+                self.predators = [PredatorAgent(i + 1000, self, False) for i in range(N_predators)]
+            else:  # Hybrid
+                for i in range(N_predators):
+                    is_llm = i < N_predators // 2
+                    self.predators.append(PredatorAgent(i + 1000, self, is_llm))
+
         self.queen = QueenAnt(self, use_llm=self.use_llm_queen) if self.with_queen else None
+        print(f"[QUEEN DEBUG] Queen initialization - with_queen: {self.with_queen}, use_llm_queen: {self.use_llm_queen}, queen created: {self.queen is not None}")
+        
+        # Initialize queen report
+        if self.queen:
+            self.queen_llm_anomaly_rep = f"Queen initialized ({'LLM-Powered' if self.use_llm_queen else 'Heuristic'} guidance mode)"
+        else:
+            self.queen_llm_anomaly_rep = "No queen active"
 
     def step(self):
         self.step_count += 1
@@ -410,20 +675,36 @@ class SimpleForagingModel:
         
         if self.queen:
             try:
+                print(f"[QUEEN DEBUG] Queen exists, use_llm_queen: {self.use_llm_queen}")
                 guidance = self.queen.guide(self.selected_model)
+                print(f"[QUEEN DEBUG] Guidance provided for {len(guidance)} ants")
+                print(f"[QUEEN DEBUG] Queen report: {self.queen_llm_anomaly_rep}")
             except Exception as e:
                 self.log_error(f"Queen guidance failed: {str(e)}")
+                print(f"[QUEEN DEBUG] Queen guidance error: {str(e)}")
                 guidance = {}
+        else:
+            print(f"[QUEEN DEBUG] No queen created. with_queen: {self.with_queen}")
 
         self.metrics["ants_carrying_food"] = 0
+        food_collected_this_step = 0
         for ant in self.ants:
             guided_pos = guidance.get(ant.unique_id)
+            if guided_pos:
+                print(f"[QUEEN DEBUG] Ant {ant.unique_id} guided to {guided_pos}")
             ant.step(guided_pos)
             if ant.carrying_food:
                 self.metrics["ants_carrying_food"] += 1
             if ant.is_llm_controlled:
                 self.metrics["total_api_calls"] += ant.api_calls
                 ant.api_calls = 0
+
+        # Step predators
+        for predator in self.predators:
+            predator.step()
+            if predator.is_llm_controlled:
+                self.metrics["total_api_calls"] += predator.api_calls
+                predator.api_calls = 0
 
         # Update foraging efficiency grid
         self.foraging_efficiency_grid *= self.foraging_decay_rate
@@ -448,6 +729,10 @@ class SimpleForagingModel:
             "food_piles_remaining": food_piles_remaining
         })
 
+        # Debug output for blockchain
+        if self.step_count % 5 == 0:  # Every 5 steps
+            print(f"[DEBUG] Step {self.step_count}: Food remaining: {food_piles_remaining}, Total collected: {self.metrics['food_collected']}, Blockchain logs: {len(self.blockchain_logs)}")
+
     def get_neighborhood(self, x, y):
         neigh = [(x+dx, y+dy)
                  for dx in (-1,0,1)
@@ -463,10 +748,11 @@ class SimpleForagingModel:
         return pos in self.foods
 
     def collect_food(self, pos, is_llm_controlled_ant):
-        """Enhanced food collection with efficiency tracking"""
+        """Enhanced food collection with efficiency tracking and blockchain logging"""
         if pos in self.foods:
             self.foods.discard(pos)
             self.metrics["food_collected"] += 1
+            self.food_collection_count += 1  # Debug counter
 
             if is_llm_controlled_ant:
                 self.metrics["food_collected_by_llm"] += 1
@@ -478,6 +764,36 @@ class SimpleForagingModel:
             if 0 <= x < self.width and 0 <= y < self.height:
                 if is_llm_controlled_ant:
                     self.foraging_efficiency_grid[x, y] += self.food_collection_score_boost
+
+            print(f"[DEBUG] collect_food called #{self.food_collection_count} at {pos}, blockchain enabled: {self.enable_blockchain}")
+
+            # --- Blockchain Integration: Log food collection ---
+            try:
+                # Always log food collection events (simulated blockchain)
+                tx_hash = f"0x{hash(f'{pos}_{self.step_count}') % (2**64):016x}"
+                log_message = f"Food collected at position {pos} by {'LLM' if is_llm_controlled_ant else 'Rule'}-based ant. Tx: {tx_hash}"
+                self.blockchain_logs.append(log_message)
+                print(f"[BLOCKCHAIN] {log_message}")
+                
+                # Try to import blockchain client if available (optional)
+                try:
+                    from blockchain.client import w3, acct, MEMORY_CONTRACT_ADDRESS
+                    if MEMORY_CONTRACT_ADDRESS:
+                        print(f"[BLOCKCHAIN] Using contract address: {MEMORY_CONTRACT_ADDRESS}")
+                    else:
+                        print("[BLOCKCHAIN] No contract address configured, using simulated transactions")
+                except ImportError as import_error:
+                    print(f"[BLOCKCHAIN] Blockchain client not available: {import_error}")
+                    print("[BLOCKCHAIN] Using simulated transactions only")
+                except Exception as client_error:
+                    print(f"[BLOCKCHAIN] Blockchain client error: {client_error}")
+                    print("[BLOCKCHAIN] Using simulated transactions only")
+                    
+            except Exception as b_e:
+                error_msg = f"Blockchain log failed for food collection at {pos}: {b_e}"
+                self.blockchain_logs.append(error_msg)
+                print(f"[BLOCKCHAIN ERROR] {error_msg}")
+                # Don't let blockchain errors break the simulation
 
     def place_food(self, pos):
         if pos not in self.foods:
@@ -504,6 +820,7 @@ class SimpleForagingModel:
         local_trail = 0.0
         local_alarm = 0.0
         local_recruitment = 0.0
+        local_fear = 0.0 # Added fear pheromone
 
         for dx in range(-radius, radius + 1):
             for dy in range(-radius, radius + 1):
@@ -512,22 +829,25 @@ class SimpleForagingModel:
                     local_trail += self.pheromone_map['trail'][nx, ny]
                     local_alarm += self.pheromone_map['alarm'][nx, ny]
                     local_recruitment += self.pheromone_map['recruitment'][nx, ny]
+                    local_fear += self.pheromone_map['fear'][nx, ny] # Added fear pheromone
         
         # Normalize by area
         area = (2 * radius + 1)**2
         return {
             'trail': local_trail / area,
             'alarm': local_alarm / area,
-            'recruitment': local_recruitment / area
+            'recruitment': local_recruitment / area,
+            'fear': local_fear / area # Added fear pheromone
         }
 
-    def set_pheromone_params(self, decay_rate, trail_deposit, alarm_deposit, recruitment_deposit, max_value):
-        """Update pheromone parameters"""
+    def set_pheromone_params(self, decay_rate, trail_deposit, alarm_deposit, recruitment_deposit, max_value, fear_deposit=3.0):
+        """Update pheromone parameters during runtime."""
         self.pheromone_decay_rate = decay_rate
         self.trail_deposit = trail_deposit
         self.alarm_deposit = alarm_deposit
         self.recruitment_deposit = recruitment_deposit
         self.max_pheromone_value = max_value
+        self.fear_deposit = fear_deposit
 
     def log_error(self, message: str):
         """Log a non-fatal error during the simulation."""

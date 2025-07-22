@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  antelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - IO_SECRET_KEY=${IO_SECRET_KEY:-your_api_key_here}
+      - CHAIN_RPC=${CHAIN_RPC:-http://127.0.0.1:8545}
+      - SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL:-}
+      - PRIVATE_KEY=${PRIVATE_KEY:-}
+      - FOOD_ADDR=${FOOD_ADDR:-}
+      - MEMORY_ADDR=${MEMORY_ADDR:-}
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://18.219.29.154:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 

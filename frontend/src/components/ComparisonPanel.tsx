@@ -22,6 +22,10 @@ interface ComparisonPanelProps {
     alarm_deposit: number;
     recruitment_deposit: number;
     max_pheromone_value: number;
+    enable_predators: boolean;
+    n_predators: number;
+    predator_type: string;
+    fear_deposit: number;
   };
   apiBaseUrl: string;
 }
@@ -51,6 +55,10 @@ export const ComparisonPanel: React.FC<ComparisonPanelProps> = ({ config, apiBas
         alarm_deposit: config.alarm_deposit,
         recruitment_deposit: config.recruitment_deposit,
         max_pheromone_value: config.max_pheromone_value,
+        // Include predator configuration
+        n_predators: config.enable_predators ? config.n_predators : 0,
+        predator_type: config.predator_type,
+        fear_deposit: config.fear_deposit,
       };
 
       const response = await axios.post(`${apiBaseUrl}/simulation/compare`, comparisonConfig);
