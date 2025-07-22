@@ -51,22 +51,6 @@
 
 Set up both the Python simulation and the Node.js-based smart contract system.
 
-### 🗂 Project Structure
-
-```
-Antelligence/
-├── app.py                     # Streamlit UI
-├── requirements.txt
-├── .env.example
-├── .env                       # Your local secrets
-└── blockchain/
-    ├── contracts/             # Solidity smart contracts
-    ├── scripts/               # Hardhat deployment
-    ├── hardhat.config.js
-    ├── package.json
-    ├── client.py
-    └── artifacts/
-```
 
 ### ✅ Prerequisites
 
@@ -84,8 +68,8 @@ Antelligence/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/eshaanmathakari/Antelligence.git
-cd Antelligence
+git clone https://github.com/kashyapnadendla/Antelligence-app.git
+cd Antelligence-app
 ```
 
 ### 2. Set Up Python Environment
@@ -125,12 +109,6 @@ npx hardhat run scripts/deploy.js --network sepolia
 
 Update `.env` with the deployed contract addresses from the output.
 
-### 5. Run the Streamlit App
-
-```bash
-cd ..
-streamlit run app.py
-```
 
 ## ⚙️ Usage
 
@@ -178,7 +156,7 @@ MIT License – see [LICENSE](LICENSE)
 
 ## 📞 Contact & Support
 
-- **Repo**: [Antelligence GitHub](https://github.com/eshaanmathakari/Antelligence)
+- **Repo**: [Antelligence GitHub]([https://github.com/eshaanmathakari/Antelligence](https://github.com/KashyapNadendla/antelligence-app))
 - **Demo Video**: (Insert link here)
 
 ---
