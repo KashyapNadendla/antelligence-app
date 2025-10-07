@@ -1,5 +1,5 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer, ScatterChart, Scatter } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer, ScatterChart, Scatter, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface FoodDepletionPoint {
@@ -87,11 +87,18 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
     return data;
   }, [currentMetrics, performanceData]);
 
-  // Prepare pheromone summary data for chart - REMOVED
+  // Prepare pheromone summary data for chart
   const pheromoneChartData = React.useMemo(() => {
-    // Pheromone charts removed - return empty array
-    return [];
-  }, []);
+    if (!pheromoneData) return [];
+    
+    const { max_values } = pheromoneData;
+    return [
+      { name: 'Trail', value: max_values.trail, color: '#22c55e' }, // Green
+      { name: 'Alarm', value: max_values.alarm, color: '#ef4444' }, // Red
+      { name: 'Recruitment', value: max_values.recruitment, color: '#3b82f6' }, // Blue
+      ...(max_values.fear !== undefined ? [{ name: 'Fear', value: max_values.fear, color: '#f97316' }] : []) // Orange
+    ];
+  }, [pheromoneData]);
 
   // Prepare hotspot data for scatter plot
   const hotspotData = React.useMemo(() => {
@@ -178,10 +185,45 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
         </Card>
       </div>
 
-      {/* Remove pheromone charts - only show efficiency and other charts */}
-      {efficiencyData && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Foraging Hotspots */}
+      {/* Pheromone and Efficiency Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pheromone Intensity Levels */}
+        {pheromoneChartData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>🧪 Pheromone Intensity Levels</CardTitle>
+              <CardDescription>
+                Maximum pheromone concentrations by type
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={pheromoneChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis 
+                    label={{ value: 'Intensity', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value) => [value?.toFixed(2), 'Intensity']}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="value" 
+                    name="Pheromone Intensity"
+                  >
+                    {pheromoneChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Foraging Hotspots */}
+        {efficiencyData && (
           <Card>
             <CardHeader>
               <CardTitle>🔥 Foraging Hotspots</CardTitle>
@@ -220,8 +262,8 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* API Usage Metrics */}
       <Card>
