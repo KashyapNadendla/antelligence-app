@@ -578,7 +578,8 @@ class SimpleForagingModel:
             "ants_carrying_food": 0,
             "ants_caught": 0,
             "llm_ants_caught": 0,
-            "rule_ants_caught": 0
+            "rule_ants_caught": 0,
+            "predator_api_calls": 0  
         }
         self.with_queen = with_queen
         self.use_llm_queen = use_llm_queen
@@ -703,7 +704,8 @@ class SimpleForagingModel:
         for predator in self.predators:
             predator.step()
             if predator.is_llm_controlled:
-                self.metrics["total_api_calls"] += predator.api_calls
+                self.metrics["predator_api_calls"] += predator.api_calls
+                self.metrics["total_api_calls"] += predator.api_calls  # Also add to total
                 predator.api_calls = 0
 
         # Update foraging efficiency grid

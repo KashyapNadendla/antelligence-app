@@ -383,42 +383,56 @@ async def compare_queen_performance(config: ComparisonConfig):
         print(f"[QUEEN COMPARISON] Starting comparison with {config.comparison_steps} steps")
         base_params = config.dict()
         
-        # Add timeout protection
-        import signal
+        # Use asyncio timeout instead of signal (cross-platform compatible)
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
         import time
         
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Queen comparison timed out")
+        async def run_comparison_with_timeout():
+            """Run comparison with timeout using asyncio"""
+            executor = ThreadPoolExecutor(max_workers=2)
+            loop = asyncio.get_event_loop()
+            
+            try:
+                # Run simulations with timeout
+                print(f"[QUEEN COMPARISON] Running simulation WITH queen...")
+                queen_params = {**base_params, 'with_queen': True}
+                food_with_queen_future = loop.run_in_executor(
+                    executor, _run_comparison_leg, queen_params, config.comparison_steps
+                )
+                
+                print(f"[QUEEN COMPARISON] Running simulation WITHOUT queen...")
+                no_queen_params = {**base_params, 'with_queen': False, 'use_llm_queen': False}
+                food_no_queen_future = loop.run_in_executor(
+                    executor, _run_comparison_leg, no_queen_params, config.comparison_steps
+                )
+                
+                # Wait for both with 60 second timeout
+                food_with_queen, food_no_queen = await asyncio.wait_for(
+                    asyncio.gather(food_with_queen_future, food_no_queen_future),
+                    timeout=60.0
+                )
+                
+                print(f"[QUEEN COMPARISON] Results - With Queen: {food_with_queen}, Without Queen: {food_no_queen}")
+                
+                return ComparisonResult(
+                    food_collected_with_queen=food_with_queen,
+                    food_collected_no_queen=food_no_queen,
+                    config=config
+                )
+            except asyncio.TimeoutError:
+                executor.shutdown(wait=False)
+                raise HTTPException(status_code=408, detail="Queen comparison timed out after 60 seconds")
+            finally:
+                executor.shutdown(wait=True)
         
-        # Set timeout to 60 seconds
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(60)
-        
-        try:
-            print(f"[QUEEN COMPARISON] Running simulation WITH queen...")
-            queen_params = {**base_params, 'with_queen': True}
-            food_with_queen = _run_comparison_leg(queen_params, config.comparison_steps)
+        return await run_comparison_with_timeout()
             
-            print(f"[QUEEN COMPARISON] Running simulation WITHOUT queen...")
-            no_queen_params = {**base_params, 'with_queen': False, 'use_llm_queen': False}
-            food_no_queen = _run_comparison_leg(no_queen_params, config.comparison_steps)
-            
-            # Cancel timeout
-            signal.alarm(0)
-            
-            print(f"[QUEEN COMPARISON] Results - With Queen: {food_with_queen}, Without Queen: {food_no_queen}")
-            
-            return ComparisonResult(
-                food_collected_with_queen=food_with_queen,
-                food_collected_no_queen=food_no_queen,
-                config=config
-            )
-        except TimeoutError:
-            signal.alarm(0)
-            raise HTTPException(status_code=408, detail="Queen comparison timed out after 60 seconds")
-            
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[QUEEN COMPARISON] Error in comparison: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/simulation/performance", response_model=PerformanceData)
