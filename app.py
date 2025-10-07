@@ -255,7 +255,7 @@ class SimpleAntAgent:
             f"Trail: {local_pheromones['trail']:.2f}, "
             f"Alarm: {local_pheromones['alarm']:.2f}, "
             f"Recruitment: {local_pheromones['recruitment']:.2f}, "
-            f"Fear: {local_pheromones.get('fear', 0):.2f}. "
+            f"Fear: {local_pheromones['fear']:.2f}. "
             f"Predators nearby: {len(nearby_predators)}. "
         )
 
@@ -522,6 +522,7 @@ class SimpleForagingModel:
         local_trail = 0.0
         local_alarm = 0.0
         local_recruitment = 0.0
+        local_fear = 0.0
 
         for dx in range(-radius, radius + 1):
             for dy in range(-radius, radius + 1):
@@ -530,13 +531,15 @@ class SimpleForagingModel:
                     local_trail += self.pheromone_map['trail'][nx, ny]
                     local_alarm += self.pheromone_map['alarm'][nx, ny]
                     local_recruitment += self.pheromone_map['recruitment'][nx, ny]
+                    local_fear += self.pheromone_map['fear'][nx, ny]
         
         # Normalize by area to prevent larger radius always meaning more pheromone
         area = (2 * radius + 1)**2
         return {
             'trail': local_trail / area,
             'alarm': local_alarm / area,
-            'recruitment': local_recruitment / area
+            'recruitment': local_recruitment / area,
+            'fear': local_fear / area
         }
 
 # Predator agent class
@@ -671,8 +674,8 @@ class PredatorAgent:
         
         pheromone_info = (
             f"Local Pheromones: "
-            f"Fear: {local_pheromones.get('fear', 0):.2f}, "
-            f"Trail: {local_pheromones.get('trail', 0):.2f}. "
+            f"Fear: {local_pheromones['fear']:.2f}, "
+            f"Trail: {local_pheromones['trail']:.2f}. "
         )
 
         if prompt_style_param == "Structured":
