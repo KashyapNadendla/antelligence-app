@@ -91,7 +91,8 @@ export const SimulationGrid = ({
         {efficiencyData.efficiency_grid.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
-            const opacity = Math.min(value / maxEfficiency, 0.8);
+            const opacity = Math.min(value / maxEfficiency, 1.0);
+            if (opacity < 0.1) return null; // Skip very low values for better performance
             return (
               <div
                 key={`efficiency-${x}-${y}`}
@@ -101,8 +102,9 @@ export const SimulationGrid = ({
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: `rgba(255, 107, 53, ${opacity * 0.6})`, // Orange with opacity
-                  border: opacity > 0.3 ? '1px solid rgba(255, 107, 53, 0.8)' : 'none',
+                  backgroundColor: `rgba(255, 107, 53, ${opacity * 0.7})`, // Increased base opacity
+                  border: opacity > 0.2 ? '2px solid rgba(255, 107, 53, 0.9)' : 'none',
+                  boxShadow: opacity > 0.5 ? '0 0 8px rgba(255, 107, 53, 0.6)' : 'none',
                 }}
               />
             );
@@ -112,10 +114,84 @@ export const SimulationGrid = ({
     );
   };
 
-  // Create subtle pheromone overlay (less intrusive than efficiency)
+  // Create pheromone overlay with different colors for each type
   const renderPheromoneOverlay = () => {
-    // Pheromone heat maps removed - return null
-    return null;
+    if (!pheromoneData) return null;
+
+    const { trail, alarm, recruitment, fear, max_values } = pheromoneData;
+    
+    return (
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Trail pheromones (green) */}
+        {trail.map((row, y) =>
+          row.map((value, x) => {
+            if (value === 0) return null;
+            const opacity = Math.min(value / max_values.trail, 0.4);
+            if (opacity < 0.05) return null; // Skip very low values
+            return (
+              <div
+                key={`trail-${x}-${y}`}
+                className="absolute"
+                style={{
+                  left: x * cellSize,
+                  top: y * cellSize,
+                  width: cellSize,
+                  height: cellSize,
+                  backgroundColor: `rgba(34, 197, 94, ${opacity})`, // Green
+                  border: opacity > 0.2 ? '1px solid rgba(34, 197, 94, 0.6)' : 'none',
+                }}
+              />
+            );
+          })
+        )}
+        
+        {/* Alarm pheromones (red) */}
+        {alarm.map((row, y) =>
+          row.map((value, x) => {
+            if (value === 0) return null;
+            const opacity = Math.min(value / max_values.alarm, 0.4);
+            if (opacity < 0.05) return null;
+            return (
+              <div
+                key={`alarm-${x}-${y}`}
+                className="absolute"
+                style={{
+                  left: x * cellSize,
+                  top: y * cellSize,
+                  width: cellSize,
+                  height: cellSize,
+                  backgroundColor: `rgba(239, 68, 68, ${opacity})`, // Red
+                  border: opacity > 0.2 ? '1px solid rgba(239, 68, 68, 0.6)' : 'none',
+                }}
+              />
+            );
+          })
+        )}
+        
+        {/* Recruitment pheromones (blue) */}
+        {recruitment.map((row, y) =>
+          row.map((value, x) => {
+            if (value === 0) return null;
+            const opacity = Math.min(value / max_values.recruitment, 0.4);
+            if (opacity < 0.05) return null;
+            return (
+              <div
+                key={`recruitment-${x}-${y}`}
+                className="absolute"
+                style={{
+                  left: x * cellSize,
+                  top: y * cellSize,
+                  width: cellSize,
+                  height: cellSize,
+                  backgroundColor: `rgba(59, 130, 246, ${opacity})`, // Blue
+                  border: opacity > 0.2 ? '1px solid rgba(59, 130, 246, 0.6)' : 'none',
+                }}
+              />
+            );
+          })
+        )}
+      </div>
+    );
   };
 
   return (
