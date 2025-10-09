@@ -18,20 +18,32 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from backend.simulation import SimpleForagingModel
+    from backend.nanobot_simulation import TumorNanobotModel
+    from backend.tumor_environment import CellPhase
     from backend.schemas import (
         SimulationConfig, SimulationResult, StepState, AntState, 
         PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
         ComparisonConfig, ComparisonResult, PerformanceData,
-        PheromoneConfigUpdate, PredatorState
+        PheromoneConfigUpdate, PredatorState,
+        # Tumor simulation schemas
+        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
+        NanobotState, TumorCellState, VesselState, SubstrateMapData,
+        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
     )
 except ImportError:
     # Fallback for local development
     from simulation import SimpleForagingModel
+    from nanobot_simulation import TumorNanobotModel
+    from tumor_environment import CellPhase
     from schemas import (
         SimulationConfig, SimulationResult, StepState, AntState, 
         PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
         ComparisonConfig, ComparisonResult, PerformanceData,
-        PheromoneConfigUpdate, PredatorState
+        PheromoneConfigUpdate, PredatorState,
+        # Tumor simulation schemas
+        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
+        NanobotState, TumorCellState, VesselState, SubstrateMapData,
+        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
     )
 
 # Load environment variables
@@ -507,4 +519,337 @@ async def get_performance_analysis(config: SimulationConfig):
         )
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Tumor Nanobot Simulation Endpoints
+# ============================================================================
+
+def convert_substrate_maps(model: TumorNanobotModel) -> SubstrateMapData:
+    """Convert substrate concentration grids to JSON-serializable format."""
+    substrate_data = {}
+    max_values = {}
+    mean_values = {}
+    
+    for name in ['oxygen', 'drug', 'trail', 'alarm', 'recruitment']:
+        substrate = model.microenv.get_substrate(name)
+        if substrate:
+            # Get 2D slice (z=0) and transpose for correct orientation
+            conc = substrate.concentration[:, :, 0].T.tolist()
+            substrate_data[name] = conc
+            max_values[name] = float(np.max(substrate.concentration))
+            mean_values[name] = float(np.mean(substrate.concentration))
+        else:
+            substrate_data[name] = []
+            max_values[name] = 0.0
+            mean_values[name] = 0.0
+    
+    return SubstrateMapData(
+        oxygen=substrate_data['oxygen'],
+        drug=substrate_data['drug'],
+        trail=substrate_data['trail'],
+        alarm=substrate_data['alarm'],
+        recruitment=substrate_data['recruitment'],
+        max_values=max_values,
+        mean_values=mean_values
+    )
+
+
+@app.post("/simulation/tumor/run", response_model=TumorSimulationResult)
+async def run_tumor_simulation(config: TumorSimulationConfig):
+    """
+    Run a tumor nanobot simulation with PhysiCell-inspired dynamics.
+    
+    This endpoint runs the core PhysiCell-based glioblastoma nanobot simulation
+    with pheromone-guided drug delivery.
+    """
+    try:
+        print(f"[TUMOR SIM] Starting tumor simulation with config: {config.dict()}")
+        
+        # Set random seeds for reproducibility
+        np.random.seed(42)
+        random.seed(42)
+        
+        # Initialize the tumor nanobot model
+        model = TumorNanobotModel(
+            domain_size=config.domain_size,
+            voxel_size=config.voxel_size,
+            n_nanobots=config.n_nanobots,
+            tumor_radius=config.tumor_radius,
+            agent_type=config.agent_type,
+            with_queen=config.use_queen,
+            use_llm_queen=config.use_llm_queen,
+            selected_model=config.selected_model
+        )
+        
+        print(f"[TUMOR SIM] Model initialized. Starting {config.max_steps} steps...")
+        
+        # Track initial tumor stats
+        initial_stats = model.geometry.get_tumor_statistics()
+        
+        history = []
+        detail_interval = max(1, config.max_steps // 20)  # Capture ~20 snapshots
+        
+        # Store initial vessel positions (static, only need once)
+        vessels_state = [
+            VesselState(
+                position=v.position,
+                oxygen_supply=v.oxygen_supply,
+                drug_supply=v.drug_supply,
+                supply_radius=v.supply_radius
+            )
+            for v in model.geometry.vessels
+        ]
+        
+        for step_num in range(config.max_steps):
+            print(f"[TUMOR SIM] Step {step_num + 1}/{config.max_steps}")
+            model.step()
+            
+            # Create nanobot states
+            nanobots_state = [nanobot.to_dict() for nanobot in model.nanobots]
+            nanobots_state = [
+                NanobotState(**nb) for nb in nanobots_state
+            ]
+            
+            # Capture detailed state periodically
+            capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
+            substrate_data = None
+            tumor_cells_state = []
+            
+            if capture_detail:
+                substrate_data = convert_substrate_maps(model)
+                
+                # Include tumor cell states (sample for performance)
+                sample_cells = random.sample(
+                    model.geometry.tumor_cells,
+                    min(100, len(model.geometry.tumor_cells))
+                )
+                tumor_cells_state = [
+                    TumorCellState(**cell.to_dict())
+                    for cell in sample_cells
+                ]
+            
+            # Create step state
+            current_state = TumorStepState(
+                step=model.step_count,
+                time=model.microenv.time,
+                nanobots=nanobots_state,
+                tumor_cells=tumor_cells_state,
+                vessels=vessels_state if step_num == 0 else [],  # Only include vessels in first step
+                metrics=model.metrics.copy(),
+                queen_report=model.queen_report,
+                errors=model.errors.copy(),
+                substrate_data=substrate_data
+            )
+            
+            history.append(current_state)
+            model.errors.clear()
+        
+        print(f"[TUMOR SIM] Simulation completed after {model.step_count} steps")
+        
+        # Get final tumor statistics
+        final_stats = model.geometry.get_tumor_statistics()
+        
+        # Calculate treatment effectiveness
+        initial_living = initial_stats['living_cells']
+        final_living = final_stats['living_cells']
+        cells_killed = initial_living - final_living
+        
+        tumor_statistics = {
+            'initial_living_cells': initial_living,
+            'final_living_cells': final_living,
+            'cells_killed': cells_killed,
+            'kill_rate': cells_killed / initial_living if initial_living > 0 else 0,
+            'initial_hypoxic': len([c for c in model.geometry.tumor_cells if c.phase.value == 'hypoxic']),
+            'final_hypoxic': final_stats['phase_distribution'].get('hypoxic', 0),
+            'apoptotic_cells': final_stats['phase_distribution'].get('apoptotic', 0),
+            'necrotic_cells': final_stats['phase_distribution'].get('necrotic', 0)
+        }
+        
+        # Get final substrate data
+        final_substrate_data = convert_substrate_maps(model)
+        
+        # Blockchain logs (placeholder for now)
+        blockchain_logs = [
+            f"Simulation initialized: {model.step_count} steps, {len(model.nanobots)} nanobots",
+            f"Treatment outcome: {cells_killed} cells killed, {model.metrics['total_deliveries']} drug deliveries"
+        ]
+        
+        return TumorSimulationResult(
+            config=config,
+            total_steps_run=model.step_count,
+            total_time=model.microenv.time,
+            final_metrics=model.metrics,
+            history=history,
+            tumor_statistics=tumor_statistics,
+            final_substrate_data=final_substrate_data,
+            blockchain_logs=blockchain_logs
+        )
+        
+    except Exception as e:
+        print("--- ERROR IN /simulation/tumor/run ---")
+        traceback.print_exc()
+        print("--------------------------------------")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/simulation/tumor/performance", response_model=TumorPerformanceData)
+async def get_tumor_performance(config: TumorSimulationConfig):
+    """
+    Run tumor simulation and return focused performance metrics.
+    """
+    try:
+        print(f"[TUMOR PERF] Running performance analysis...")
+        
+        np.random.seed(42)
+        random.seed(42)
+        
+        model = TumorNanobotModel(
+            domain_size=config.domain_size,
+            voxel_size=config.voxel_size,
+            n_nanobots=config.n_nanobots,
+            tumor_radius=config.tumor_radius,
+            agent_type=config.agent_type,
+            with_queen=config.use_queen,
+            use_llm_queen=config.use_llm_queen,
+            selected_model=config.selected_model
+        )
+        
+        initial_hypoxic = len(model.geometry.get_cells_in_phase(CellPhase.HYPOXIC))
+        initial_living = len(model.geometry.get_living_cells())
+        
+        # Run simulation
+        for _ in range(config.max_steps):
+            model.step()
+        
+        final_hypoxic = len(model.geometry.get_cells_in_phase(CellPhase.HYPOXIC))
+        final_living = len(model.geometry.get_living_cells())
+        
+        cells_killed = initial_living - final_living
+        drug_efficiency = cells_killed / model.metrics['total_drug_delivered'] if model.metrics['total_drug_delivered'] > 0 else 0
+        hypoxic_reduction = ((initial_hypoxic - final_hypoxic) / initial_hypoxic * 100) if initial_hypoxic > 0 else 0
+        
+        # Get substrate summary
+        substrate_summary = model.microenv.get_substrate_summary()
+        
+        return TumorPerformanceData(
+            cells_killed=cells_killed,
+            total_drug_delivered=model.metrics['total_drug_delivered'],
+            total_deliveries=model.metrics['total_deliveries'],
+            drug_efficiency=drug_efficiency,
+            hypoxic_cell_reduction=hypoxic_reduction,
+            total_api_calls=model.metrics['total_api_calls'],
+            substrate_summary=substrate_summary
+        )
+        
+    except Exception as e:
+        print(f"[TUMOR PERF] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/simulation/tumor/compare", response_model=TumorComparisonResult)
+async def compare_tumor_strategies(config: TumorComparisonConfig):
+    """
+    Compare pheromone-guided vs. non-pheromone nanobot strategies.
+    """
+    try:
+        print(f"[TUMOR COMPARE] Starting strategy comparison...")
+        
+        # Helper function to run one simulation
+        def run_one(use_pheromones: bool, steps: int):
+            np.random.seed(42)
+            random.seed(42)
+            
+            model = TumorNanobotModel(
+                domain_size=config.domain_size,
+                voxel_size=config.voxel_size,
+                n_nanobots=config.n_nanobots,
+                tumor_radius=config.tumor_radius,
+                agent_type="Rule-Based",  # Use rule-based for fair comparison
+                with_queen=False,
+                use_llm_queen=False,
+                selected_model=config.selected_model
+            )
+            
+            initial_living = len(model.geometry.get_living_cells())
+            
+            # If not using pheromones, disable chemotaxis to pheromones
+            if not use_pheromones:
+                for nanobot in model.nanobots:
+                    nanobot.chemotaxis_weights['trail'] = 0.0
+                    nanobot.chemotaxis_weights['alarm'] = 0.0
+                    nanobot.chemotaxis_weights['recruitment'] = 0.0
+            
+            for _ in range(steps):
+                model.step()
+            
+            final_living = len(model.geometry.get_living_cells())
+            cells_killed = initial_living - final_living
+            drug_efficiency = cells_killed / model.metrics['total_drug_delivered'] if model.metrics['total_drug_delivered'] > 0 else 0
+            
+            return cells_killed, drug_efficiency
+        
+        # Run both strategies
+        print("[TUMOR COMPARE] Running WITH pheromones...")
+        cells_killed_with, efficiency_with = run_one(True, config.comparison_steps)
+        
+        print("[TUMOR COMPARE] Running WITHOUT pheromones...")
+        cells_killed_without, efficiency_without = run_one(False, config.comparison_steps)
+        
+        print(f"[TUMOR COMPARE] Results - With: {cells_killed_with} killed, Without: {cells_killed_without} killed")
+        
+        return TumorComparisonResult(
+            cells_killed_with_pheromones=cells_killed_with,
+            cells_killed_no_pheromones=cells_killed_without,
+            drug_efficiency_with_pheromones=efficiency_with,
+            drug_efficiency_no_pheromones=efficiency_without,
+            config=config
+        )
+        
+    except Exception as e:
+        print(f"[TUMOR COMPARE] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/simulation/tumor/test")
+async def test_tumor_simulation():
+    """Quick test of tumor simulation system."""
+    try:
+        print("[TUMOR TEST] Starting quick test...")
+        
+        model = TumorNanobotModel(
+            domain_size=400.0,
+            voxel_size=20.0,
+            n_nanobots=5,
+            tumor_radius=100.0,
+            agent_type="Rule-Based",
+            with_queen=False
+        )
+        
+        initial_living = len(model.geometry.get_living_cells())
+        
+        # Run 10 steps
+        for i in range(10):
+            model.step()
+            print(f"[TUMOR TEST] Step {i+1}: {len(model.geometry.get_living_cells())} living cells")
+        
+        final_living = len(model.geometry.get_living_cells())
+        
+        return {
+            "status": "success",
+            "steps_run": model.step_count,
+            "initial_living_cells": initial_living,
+            "final_living_cells": final_living,
+            "cells_killed": initial_living - final_living,
+            "drug_deliveries": model.metrics['total_deliveries'],
+            "substrate_summary": model.microenv.get_substrate_summary(),
+            "errors": model.errors
+        }
+        
+    except Exception as e:
+        print(f"[TUMOR TEST] Error: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

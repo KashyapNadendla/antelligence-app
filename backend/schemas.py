@@ -122,3 +122,117 @@ class PheromoneConfigUpdate(BaseModel):
     alarm_deposit: float = Field(ge=0.1, le=5.0)
     recruitment_deposit: float = Field(ge=0.1, le=5.0)
     max_value: float = Field(ge=5.0, le=20.0)
+
+
+# ============================================================================
+# Tumor Nanobot Simulation Schemas
+# ============================================================================
+
+class TumorSimulationConfig(BaseModel):
+    """Configuration for tumor nanobot simulation."""
+    domain_size: float = Field(600.0, gt=0, description="Simulation domain size in micrometers")
+    voxel_size: float = Field(10.0, gt=0, description="Voxel spacing in micrometers")
+    n_nanobots: int = Field(10, gt=0, le=100, description="Number of nanobots")
+    tumor_radius: float = Field(200.0, gt=0, description="Tumor radius in micrometers")
+    agent_type: Literal["LLM-Powered", "Rule-Based", "Hybrid"] = "LLM-Powered"
+    selected_model: str = "meta-llama/Llama-3.3-70B-Instruct"
+    use_queen: bool = False
+    use_llm_queen: bool = False
+    max_steps: int = Field(100, gt=0, le=500, description="Maximum simulation steps")
+    
+    # Cell parameters
+    cell_density: float = Field(0.001, gt=0, description="Tumor cells per µm²")
+    vessel_density: float = Field(0.01, gt=0, description="Blood vessels per 100 µm²")
+
+
+class NanobotState(BaseModel):
+    """State of a single nanobot at a point in time."""
+    id: int
+    position: Tuple[float, float]
+    state: str  # 'searching', 'targeting', 'delivering', 'returning', 'reloading'
+    drug_payload: float
+    deliveries_made: int
+    total_drug_delivered: float
+    is_llm: bool
+    has_target: bool
+
+
+class TumorCellState(BaseModel):
+    """State of a tumor cell at a point in time."""
+    id: int
+    position: Tuple[float, float, float]
+    radius: float
+    phase: str  # 'viable', 'hypoxic', 'necrotic', 'apoptotic'
+    is_alive: bool
+    oxygen_uptake: float
+    accumulated_drug: float
+    hypoxic_duration: float
+
+
+class VesselState(BaseModel):
+    """State of a blood vessel."""
+    position: Tuple[float, float, float]
+    oxygen_supply: float
+    drug_supply: float
+    supply_radius: float
+
+
+class SubstrateMapData(BaseModel):
+    """Substrate concentration maps for visualization."""
+    oxygen: List[List[float]]
+    drug: List[List[float]]
+    trail: List[List[float]]
+    alarm: List[List[float]]
+    recruitment: List[List[float]]
+    max_values: Dict[str, float]
+    mean_values: Dict[str, float]
+
+
+class TumorStepState(BaseModel):
+    """Complete state of tumor simulation at a single step."""
+    step: int
+    time: float  # Simulation time in minutes
+    nanobots: List[NanobotState]
+    tumor_cells: List[TumorCellState] = []  # Optional, can be sparse for performance
+    vessels: List[VesselState] = []  # Optional, static so only need once
+    metrics: Dict
+    queen_report: str
+    errors: List[str]
+    substrate_data: Optional[SubstrateMapData] = None
+
+
+class TumorSimulationResult(BaseModel):
+    """Final result of a tumor nanobot simulation run."""
+    config: TumorSimulationConfig
+    total_steps_run: int
+    total_time: float  # Simulation time in minutes
+    final_metrics: Dict
+    history: List[TumorStepState]
+    tumor_statistics: Dict  # Summary stats about tumor kill rate, etc.
+    final_substrate_data: Optional[SubstrateMapData] = None
+    blockchain_logs: List[str] = []
+
+
+class TumorComparisonConfig(TumorSimulationConfig):
+    """Configuration for comparing tumor nanobot strategies."""
+    comparison_steps: int = Field(50, gt=0, le=200, description="Steps for each comparison run")
+
+
+class TumorComparisonResult(BaseModel):
+    """Result of comparing different nanobot strategies."""
+    cells_killed_with_pheromones: int
+    cells_killed_no_pheromones: int
+    drug_efficiency_with_pheromones: float
+    drug_efficiency_no_pheromones: float
+    config: TumorComparisonConfig
+
+
+class TumorPerformanceData(BaseModel):
+    """Performance metrics for tumor simulation analysis."""
+    cells_killed: int
+    total_drug_delivered: float
+    total_deliveries: int
+    drug_efficiency: float  # Cells killed per unit drug
+    hypoxic_cell_reduction: float  # Percentage reduction in hypoxic cells
+    total_api_calls: int
+    substrate_summary: Optional[Dict[str, Dict[str, float]]] = None

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import { Brain } from 'lucide-react';
 import antFrontpageImage from '/ant-frontpage.jpg';
 
 interface IntroPageProps {
@@ -9,12 +11,17 @@ interface IntroPageProps {
 
 export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const navigate = useNavigate();
 
   const handleEnter = () => {
     setIsVisible(false);
     setTimeout(() => {
       onEnter();
     }, 500);
+  };
+
+  const handleTumorSimulation = () => {
+    navigate('/tumor');
   };
 
   // Handle keyboard enter
@@ -49,15 +56,25 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
           <h1 className="text-8xl font-black text-gray-900 mb-12 tracking-tight drop-shadow-2xl">
             Antelligence
           </h1>
-          <Button 
-            onClick={handleEnter}
-            size="lg"
-            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-8 py-4 text-xl font-semibold"
-          >
-            Start Foraging
-          </Button>
+          <div className="flex flex-col gap-4 items-center">
+            <Button 
+              onClick={handleEnter}
+              size="lg"
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-8 py-4 text-xl font-semibold"
+            >
+              🐜 Start Foraging Simulation
+            </Button>
+            <Button 
+              onClick={handleTumorSimulation}
+              size="lg"
+              className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-8 py-4 text-xl font-semibold"
+            >
+              <Brain className="mr-2" />
+              Tumor Nanobot Simulation
+            </Button>
+          </div>
           <p className="text-gray-800 mt-4 text-lg drop-shadow-md font-medium">
-            Press <kbd className="px-2 py-1 bg-gray-200 rounded text-sm">Enter</kbd> or click to begin
+            Choose your simulation experience
           </p>
         </div>
       </div>

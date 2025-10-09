@@ -4,3 +4,6 @@ openai
 numpy
 python-dotenv
 pandas # Still useful for data manipulation if needed
+scipy # For advanced PDE solvers and numerical methods
+nibabel # For loading NIfTI BraTS MRI images (future)
+scikit-image # For image processing tumor geometries (future)
