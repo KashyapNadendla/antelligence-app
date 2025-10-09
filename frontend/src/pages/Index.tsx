@@ -6,12 +6,14 @@ import { SimulationGrid } from "@/components/SimulationGrid";
 import { QueenAntReport } from "@/components/QueenAntReport";
 import { PerformanceCharts } from "@/components/PerformanceCharts";
 import { ComparisonPanel } from "@/components/ComparisonPanel";
+import { HistoricalPerformance } from "@/components/HistoricalPerformance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SimulationLoading } from "@/components/SimulationLoading";
 import { IntroPage } from "@/components/IntroPage";
+import { saveSimulationResult } from "@/lib/simulationHistory";
 
 // The URL of your running FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
@@ -160,6 +162,17 @@ const Index = () => {
       if (response.data.history[0]?.errors?.length > 0) {
         console.warn("⚠️ Simulation errors:", response.data.history[0].errors);
       }
+      
+      // Save simulation result to history
+      saveSimulationResult({
+        agentType: config.agent_type as 'LLM-Powered' | 'Rule-Based' | 'Hybrid',
+        foodCollected: response.data.final_metrics?.food_collected || 0,
+        steps: response.data.total_steps_run || config.max_steps,
+        gridSize: { width: config.grid_width, height: config.grid_height },
+        antCount: config.n_ants,
+        foodPiles: config.n_food,
+      });
+      console.log("💾 Simulation result saved to history");
       
       // Reset loading after a brief delay to show completion
       setTimeout(() => {
@@ -579,6 +592,13 @@ const Index = () => {
                 </div>
               </>
             )}
+
+            {/* Historical Performance */}
+            <Separator />
+            <div>
+              <h2 className="text-2xl font-bold mb-4">📊 Historical Performance</h2>
+              <HistoricalPerformance />
+            </div>
 
             {/* Comparison Panel */}
             <Separator />
