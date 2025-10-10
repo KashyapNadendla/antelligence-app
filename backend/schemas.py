@@ -79,6 +79,17 @@ class StepState(BaseModel):
     efficiency_data: Optional[ForagingEfficiencyData] = None
     nest_position: Tuple[int, int] = (10, 10)  # Default nest position
 
+class BlockchainTransaction(BaseModel):
+    """Represents a single blockchain transaction with latency data."""
+    tx_hash: str
+    step: int
+    position: List[int]
+    ant_type: str
+    submit_time: float
+    confirm_time: float
+    latency_ms: int
+    success: bool
+
 class SimulationResult(BaseModel):
     """The final result of a full simulation run."""
     config: SimulationConfig
@@ -90,6 +101,7 @@ class SimulationResult(BaseModel):
     final_pheromone_data: Optional[PheromoneMapData] = None
     final_efficiency_data: Optional[ForagingEfficiencyData] = None
     blockchain_logs: List[str] = []  # Add blockchain transaction logs
+    blockchain_transactions: List[BlockchainTransaction] = []  # Structured transaction data
 
 class ComparisonConfig(SimulationConfig):
     """Configuration for the comparison endpoint."""

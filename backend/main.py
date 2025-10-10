@@ -295,13 +295,20 @@ async def run_simulation(config: SimulationConfig):
         final_pheromone_data = convert_pheromone_maps(model)
         final_efficiency_data = convert_efficiency_data(model)
 
-        # Collect blockchain logs (always enabled)
+        # Collect blockchain logs and transactions (always enabled)
         blockchain_logs = []
+        blockchain_transactions = []
         if hasattr(model, 'blockchain_logs'):
             blockchain_logs = model.blockchain_logs
             print(f"[BLOCKCHAIN] Collected {len(blockchain_logs)} blockchain logs")
         else:
             print(f"[BLOCKCHAIN] No blockchain logs attribute found on model")
+        
+        if hasattr(model, 'blockchain_transactions'):
+            blockchain_transactions = model.blockchain_transactions
+            print(f"[BLOCKCHAIN] Collected {len(blockchain_transactions)} blockchain transactions")
+        else:
+            print(f"[BLOCKCHAIN] No blockchain transactions attribute found on model")
 
         return SimulationResult(
             config=config,
@@ -312,7 +319,8 @@ async def run_simulation(config: SimulationConfig):
             initial_food_count=model.initial_food_count,
             final_pheromone_data=final_pheromone_data,
             final_efficiency_data=final_efficiency_data,
-            blockchain_logs=blockchain_logs
+            blockchain_logs=blockchain_logs,
+            blockchain_transactions=blockchain_transactions
         )
 
     except Exception as e:

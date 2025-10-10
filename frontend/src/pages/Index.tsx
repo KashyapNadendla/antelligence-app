@@ -7,6 +7,7 @@ import { QueenAntReport } from "@/components/QueenAntReport";
 import { PerformanceCharts } from "@/components/PerformanceCharts";
 import { ComparisonPanel } from "@/components/ComparisonPanel";
 import { HistoricalPerformance } from "@/components/HistoricalPerformance";
+import { BlockchainMetrics } from "@/components/BlockchainMetrics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -599,6 +600,17 @@ const Index = () => {
               <h2 className="text-2xl font-bold mb-4">📊 Historical Performance</h2>
               <HistoricalPerformance />
             </div>
+
+            {/* Blockchain Metrics - Only show if simulation has run */}
+            {simulationResults && simulationResults.blockchain_transactions && (
+              <>
+                <Separator />
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">🔗 Blockchain Analytics</h2>
+                  <BlockchainMetrics transactions={simulationResults.blockchain_transactions} />
+                </div>
+              </>
+            )}
 
             {/* Comparison Panel */}
             <Separator />

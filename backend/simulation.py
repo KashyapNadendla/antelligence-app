@@ -613,6 +613,7 @@ class SimpleForagingModel:
 
         # Initialize blockchain logs
         self.blockchain_logs = []
+        self.blockchain_transactions = []  # Structured transaction data
         self.enable_blockchain = True  # Always enabled
         self.food_collection_count = 0  # Debug counter
         
@@ -771,9 +772,32 @@ class SimpleForagingModel:
 
             # --- Blockchain Integration: Log food collection ---
             try:
+                import time
+                
+                # Simulate transaction submission and confirmation time
+                submit_time = time.time() * 1000  # milliseconds
+                
                 # Always log food collection events (simulated blockchain)
                 tx_hash = f"0x{hash(f'{pos}_{self.step_count}') % (2**64):016x}"
-                log_message = f"Food collected at position {pos} by {'LLM' if is_llm_controlled_ant else 'Rule'}-based ant. Tx: {tx_hash}"
+                
+                # Simulate blockchain latency (50-200ms for realistic feel)
+                simulated_latency = np.random.randint(50, 200)
+                confirm_time = submit_time + simulated_latency
+                
+                # Store structured transaction data
+                tx_data = {
+                    'tx_hash': tx_hash,
+                    'step': self.step_count,
+                    'position': list(pos),
+                    'ant_type': 'LLM' if is_llm_controlled_ant else 'Rule',
+                    'submit_time': submit_time,
+                    'confirm_time': confirm_time,
+                    'latency_ms': simulated_latency,
+                    'success': True
+                }
+                self.blockchain_transactions.append(tx_data)
+                
+                log_message = f"Food collected at position {pos} by {'LLM' if is_llm_controlled_ant else 'Rule'}-based ant. Tx: {tx_hash} (latency: {simulated_latency}ms)"
                 self.blockchain_logs.append(log_message)
                 print(f"[BLOCKCHAIN] {log_message}")
                 
