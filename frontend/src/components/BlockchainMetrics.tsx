@@ -11,6 +11,7 @@ interface BlockchainTransaction {
   confirm_time: number;
   latency_ms: number;
   success: boolean;
+  gas_used?: number;
 }
 
 interface BlockchainMetricsProps {
@@ -157,6 +158,39 @@ export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
         {/* Compact Summary */}
         <div className="mt-3 text-xs text-muted-foreground text-center">
           {metrics.totalTx} total transactions • {metrics.llmTx} from LLM ants • {metrics.ruleTx} from Rule ants
+        </div>
+
+        {/* Recent Transactions with Etherscan Links */}
+        <div className="mt-4">
+          <div className="text-sm font-medium mb-2">Recent Transactions</div>
+          <div className="max-h-[200px] overflow-y-auto space-y-1">
+            {transactions.slice(-10).reverse().map((tx, idx) => (
+              <div key={idx} className="flex items-center justify-between text-xs p-2 rounded border bg-card/30 hover:bg-card/50 transition-colors">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    tx.ant_type === 'LLM' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {tx.ant_type}
+                  </span>
+                  <span className="text-muted-foreground">Step {tx.step}</span>
+                  <span className="text-muted-foreground truncate flex-1 min-w-0" title={tx.tx_hash}>
+                    {tx.tx_hash.slice(0, 10)}...{tx.tx_hash.slice(-8)}
+                  </span>
+                  <span className={`${tx.success ? 'text-green-600' : 'text-red-600'}`}>
+                    {tx.latency_ms}ms
+                  </span>
+                </div>
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${tx.tx_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 px-2 py-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors whitespace-nowrap"
+                >
+                  View on Etherscan
+                </a>
+              </div>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>

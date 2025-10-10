@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { SimulationSidebar } from "@/components/SimulationSidebar";
 import { SimulationControls } from "@/components/SimulationControls";
 import { SimulationGrid } from "@/components/SimulationGrid";
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import { SimulationLoading } from "@/components/SimulationLoading";
 import { IntroPage } from "@/components/IntroPage";
 import { saveSimulationResult } from "@/lib/simulationHistory";
+import { BarChart3 } from "lucide-react";
 
 // The URL of your running FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
@@ -49,6 +51,8 @@ interface SimulationConfig {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
+  
   // --- INTRO PAGE STATE ---
   const [showIntro, setShowIntro] = useState(true);
 
@@ -605,9 +609,21 @@ const Index = () => {
             {simulationResults && simulationResults.blockchain_transactions && (
               <>
                 <Separator />
-                <div>
-                  <h2 className="text-2xl font-bold mb-4">🔗 Blockchain Analytics</h2>
-                  <BlockchainMetrics transactions={simulationResults.blockchain_transactions} />
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold">🔗 Blockchain Analytics</h2>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => navigate('/comparison')}
+                      className="gap-2"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Simulation Comparison Lab
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-6">
+                    <BlockchainMetrics transactions={simulationResults.blockchain_transactions} />
+                  </div>
                 </div>
               </>
             )}

@@ -89,6 +89,7 @@ class BlockchainTransaction(BaseModel):
     confirm_time: float
     latency_ms: int
     success: bool
+    gas_used: int = 0  # Gas used in the transaction
 
 class SimulationResult(BaseModel):
     """The final result of a full simulation run."""

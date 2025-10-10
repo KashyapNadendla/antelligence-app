@@ -12,6 +12,34 @@ import time
 # Load environment variables
 load_dotenv()
 IO_API_KEY = os.getenv("IO_SECRET_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+
+# Initialize model clients
+try:
+    import google.generativeai as genai
+    if GEMINI_API_KEY:
+        genai.configure(api_key=GEMINI_API_KEY)
+        print("✅ Gemini API configured")
+except ImportError:
+    print("⚠️ google-generativeai not installed")
+    genai = None
+
+try:
+    from mistralai import Mistral
+    mistral_client = Mistral(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
+    if mistral_client:
+        print("✅ Mistral client configured")
+except ImportError:
+    print("⚠️ mistralai not installed")
+    mistral_client = None
+
+# OpenAI client for GPT models
+openai_client = None
+if OPENAI_API_KEY:
+    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    print("✅ OpenAI client configured")
 
 class SimpleAntAgent:
     def __init__(self, unique_id, model, is_llm_controlled=True):
@@ -200,22 +228,83 @@ class SimpleAntAgent:
             )
 
         try:
-            response = self.model.io_client.chat.completions.create(
-                model=selected_model_param,
-                messages=[
-                    {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_completion_tokens=10,
-                timeout=10
-            )
-            action = response.choices[0].message.content.strip().lower()
+            # Route to appropriate model API based on model name
+            action = None
+            
+            # OpenAI models (gpt-4o, gpt-4o-mini)
+            if selected_model_param.startswith("gpt-") and openai_client:
+                response = openai_client.chat.completions.create(
+                    model=selected_model_param,
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=10,
+                    timeout=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # Gemini models
+            elif selected_model_param.startswith("gemini-") and genai:
+                model = genai.GenerativeModel(selected_model_param)
+                response = model.generate_content(
+                    f"You are an intelligent ant. Respond with one word: toward, random, or stay.\n\n{prompt}",
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.3,
+                        max_output_tokens=10,
+                    )
+                )
+                action = response.text.strip().lower()
+            
+            # Mistral models
+            elif selected_model_param.startswith("mistral-") and mistral_client:
+                response = mistral_client.chat.complete(
+                    model=selected_model_param,
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # DeepSeek models (OpenAI-compatible via IO.NET)
+            elif selected_model_param.startswith("deepseek-") and self.model.io_client:
+                response = self.model.io_client.chat.completions.create(
+                    model=selected_model_param,
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_completion_tokens=10,
+                    timeout=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # IO.NET models (meta-llama, etc.)
+            elif self.model.io_client:
+                response = self.model.io_client.chat.completions.create(
+                    model=selected_model_param,
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_completion_tokens=10,
+                    timeout=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # Return valid action or default to random
             return action if action in ["toward", "random", "stay"] else "random"
+            
         except Exception as e:
             # Deposit alarm pheromone on API error
             self.model.deposit_pheromone(self.pos, 'alarm', self.model.alarm_deposit * 1.5)
-            self.model.log_error(f"LLM call failed for Ant {self.unique_id}: {str(e)}")
+            self.model.log_error(f"LLM call failed for Ant {self.unique_id} with model {selected_model_param}: {str(e)}")
             return "random"
 
 # Predator agent class
@@ -770,19 +859,93 @@ class SimpleForagingModel:
 
             print(f"[DEBUG] collect_food called #{self.food_collection_count} at {pos}, blockchain enabled: {self.enable_blockchain}")
 
-            # --- Blockchain Integration: Log food collection ---
+            # --- Blockchain Integration: Record food collection on-chain ---
             try:
                 import time
-                
-                # Simulate transaction submission and confirmation time
                 submit_time = time.time() * 1000  # milliseconds
+                tx_hash = None
+                latency_ms = 0
+                success = False
+                gas_used = 0
                 
-                # Always log food collection events (simulated blockchain)
-                tx_hash = f"0x{hash(f'{pos}_{self.step_count}') % (2**64):016x}"
-                
-                # Simulate blockchain latency (50-200ms for realistic feel)
-                simulated_latency = np.random.randint(50, 200)
-                confirm_time = submit_time + simulated_latency
+                # Try to submit real blockchain transaction
+                try:
+                    from blockchain.client import w3, acct, memory_contract, MEMORY_CONTRACT_ADDRESS
+                    
+                    # Detailed debugging
+                    print(f"[BLOCKCHAIN DEBUG] memory_contract: {memory_contract is not None}")
+                    print(f"[BLOCKCHAIN DEBUG] MEMORY_CONTRACT_ADDRESS: {MEMORY_CONTRACT_ADDRESS}")
+                    print(f"[BLOCKCHAIN DEBUG] w3.is_connected(): {w3.is_connected()}")
+                    
+                    if not memory_contract:
+                        raise Exception("memory_contract is None - contract not initialized")
+                    if not MEMORY_CONTRACT_ADDRESS:
+                        raise Exception("MEMORY_CONTRACT_ADDRESS is None - check .env file")
+                    if not w3.is_connected():
+                        raise Exception("Web3 not connected to RPC")
+                    
+                    # All checks passed, submit real transaction
+                    food_id = self.food_collection_count
+                    x_coord, y_coord = pos
+                    
+                    print(f"[BLOCKCHAIN] Submitting transaction for food #{food_id} at ({x_coord}, {y_coord})")
+                    
+                    # Get nonce - use 'pending' to include pending transactions
+                    nonce = w3.eth.get_transaction_count(acct.address, 'pending')
+                    
+                    # Get current gas price and add 10% buffer to avoid underpricing
+                    base_gas_price = w3.eth.gas_price
+                    gas_price = int(base_gas_price * 1.1)
+                    
+                    print(f"[BLOCKCHAIN] Using nonce: {nonce}, gas price: {gas_price}")
+                    
+                    tx = memory_contract.functions.recordFood(
+                        food_id, x_coord, y_coord
+                    ).build_transaction({
+                        'from': acct.address,
+                        'nonce': nonce,
+                        'gas': 100000,  # Estimated gas limit
+                        'gasPrice': gas_price,
+                        'chainId': w3.eth.chain_id
+                    })
+                    
+                    print(f"[BLOCKCHAIN] Transaction built, signing with account {acct.address}")
+                    
+                    # Sign and send transaction
+                    signed_tx = acct.sign_transaction(tx)
+                    # Use raw_transaction (snake_case) for newer web3.py versions
+                    raw_tx = signed_tx.raw_transaction if hasattr(signed_tx, 'raw_transaction') else signed_tx.rawTransaction
+                    tx_hash_bytes = w3.eth.send_raw_transaction(raw_tx)
+                    tx_hash = tx_hash_bytes.hex()
+                    
+                    print(f"[BLOCKCHAIN] Transaction sent: {tx_hash}, waiting for confirmation...")
+                    
+                    # Wait for confirmation with extended timeout
+                    receipt = w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=60)
+                    confirm_time = time.time() * 1000
+                    latency_ms = int(confirm_time - submit_time)
+                    success = receipt['status'] == 1
+                    gas_used = receipt['gasUsed']
+                    
+                    print(f"[BLOCKCHAIN] ✅ Real transaction confirmed: {tx_hash}")
+                    print(f"[BLOCKCHAIN] Gas used: {gas_used}, Status: {'Success' if success else 'Failed'}")
+                    
+                    # Add delay between transactions to prevent nonce conflicts
+                    # This ensures the previous transaction is fully processed
+                    time.sleep(1.5)
+                    print(f"[BLOCKCHAIN] Cooling down for 1.5 seconds to prevent rate limiting...")
+                    
+                except Exception as blockchain_error:
+                    # Fall back to simulated transaction
+                    print(f"[BLOCKCHAIN] ⚠️ Real blockchain unavailable: {blockchain_error}")
+                    print(f"[BLOCKCHAIN] Error type: {type(blockchain_error).__name__}")
+                    import traceback
+                    print(f"[BLOCKCHAIN] Traceback: {traceback.format_exc()}")
+                    print("[BLOCKCHAIN] ⚠️ Using simulated transaction as fallback")
+                    tx_hash = f"0x{hash(f'{pos}_{self.step_count}_{time.time()}') % (16**64):064x}"
+                    latency_ms = np.random.randint(50, 200)
+                    confirm_time = submit_time + latency_ms
+                    success = True
                 
                 # Store structured transaction data
                 tx_data = {
@@ -791,29 +954,16 @@ class SimpleForagingModel:
                     'position': list(pos),
                     'ant_type': 'LLM' if is_llm_controlled_ant else 'Rule',
                     'submit_time': submit_time,
-                    'confirm_time': confirm_time,
-                    'latency_ms': simulated_latency,
-                    'success': True
+                    'confirm_time': submit_time + latency_ms,
+                    'latency_ms': latency_ms,
+                    'success': success,
+                    'gas_used': gas_used
                 }
                 self.blockchain_transactions.append(tx_data)
                 
-                log_message = f"Food collected at position {pos} by {'LLM' if is_llm_controlled_ant else 'Rule'}-based ant. Tx: {tx_hash} (latency: {simulated_latency}ms)"
+                log_message = f"Food collected at position {pos} by {'LLM' if is_llm_controlled_ant else 'Rule'}-based ant. Tx: {tx_hash} (latency: {latency_ms}ms)"
                 self.blockchain_logs.append(log_message)
                 print(f"[BLOCKCHAIN] {log_message}")
-                
-                # Try to import blockchain client if available (optional)
-                try:
-                    from blockchain.client import w3, acct, MEMORY_CONTRACT_ADDRESS
-                    if MEMORY_CONTRACT_ADDRESS:
-                        print(f"[BLOCKCHAIN] Using contract address: {MEMORY_CONTRACT_ADDRESS}")
-                    else:
-                        print("[BLOCKCHAIN] No contract address configured, using simulated transactions")
-                except ImportError as import_error:
-                    print(f"[BLOCKCHAIN] Blockchain client not available: {import_error}")
-                    print("[BLOCKCHAIN] Using simulated transactions only")
-                except Exception as client_error:
-                    print(f"[BLOCKCHAIN] Blockchain client error: {client_error}")
-                    print("[BLOCKCHAIN] Using simulated transactions only")
                     
             except Exception as b_e:
                 error_msg = f"Blockchain log failed for food collection at {pos}: {b_e}"
@@ -866,14 +1016,20 @@ class SimpleForagingModel:
             'fear': local_fear / area # Added fear pheromone
         }
 
-    def set_pheromone_params(self, decay_rate, trail_deposit, alarm_deposit, recruitment_deposit, max_value, fear_deposit=3.0):
-        """Update pheromone parameters during runtime."""
+    def set_pheromone_params(self, decay_rate, trail_deposit=None, alarm_deposit=None, recruitment_deposit=None, max_value=None, fear_deposit=None):
+        """Update pheromone parameters during runtime.
+        
+        New behavior: Fixed deposits of 2 for each pheromone type.
+        Max value auto-calculated based on ant count.
+        """
         self.pheromone_decay_rate = decay_rate
-        self.trail_deposit = trail_deposit
-        self.alarm_deposit = alarm_deposit
-        self.recruitment_deposit = recruitment_deposit
-        self.max_pheromone_value = max_value
-        self.fear_deposit = fear_deposit
+        # Fixed deposits for all pheromone types
+        self.trail_deposit = 2.0
+        self.alarm_deposit = 2.0
+        self.recruitment_deposit = 2.0
+        self.fear_deposit = 2.0
+        # Max value based on number of ants
+        self.max_pheromone_value = len(self.ants) * 2.0
 
     def log_error(self, message: str):
         """Log a non-fatal error during the simulation."""

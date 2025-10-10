@@ -3,4 +3,8 @@ uvicorn[standard]
 openai
 numpy
 python-dotenv
-pandas # Still useful for data manipulation if needed
+pandas
+web3
+google-generativeai
+mistralai
+httpx

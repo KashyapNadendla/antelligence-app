@@ -2,10 +2,25 @@ import os
 from dotenv import load_dotenv
 from web3 import Web3
 from eth_account import Account
-import json # Import json to parse ABI if needed, though we'll assume it's a string from .env for now
+import json
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Helper function to load contract ABI
+def load_contract_abi(contract_name):
+    """Load ABI from compiled Hardhat artifacts"""
+    try:
+        artifact_path = os.path.join(
+            os.path.dirname(__file__),
+            'artifacts', 'contracts', f'{contract_name}.sol', f'{contract_name}.json'
+        )
+        with open(artifact_path, 'r') as f:
+            artifact = json.load(f)
+            return artifact['abi']
+    except Exception as e:
+        print(f"Warning: Could not load ABI for {contract_name}: {e}")
+        return None
 
 # Get RPC URL and Private Key from environment variables
 # Prioritize local chain RPC if available, otherwise fall back to Sepolia
@@ -62,12 +77,32 @@ if not FOOD_CONTRACT_ADDRESS:
 if not MEMORY_CONTRACT_ADDRESS:
     print("WARNING: MEMORY_ADDR not set in .env. Memory contract interactions may fail.")
 
-# You can define a placeholder ABI here if you don't want to load it from Streamlit
-# For demonstration, you might want to load it from a separate JSON file or hardcode it
-# Example:
-# with open('path/to/your/FoodContract.json', 'r') as f:
-#     FOOD_CONTRACT_ABI = json.load(f)['abi']
-# Or if you want to use the one from app.py's sidebar:
-# FOOD_CONTRACT_ABI = None # Will be passed from Streamlit's session_state
+# Load contract ABIs
+MEMORY_ABI = load_contract_abi('ColonyMemory')
+FOOD_ABI = load_contract_abi('FoodToken')
 
-# The `w3` and `acct` objects are now ready to be imported and used by `app.py`
+# Create contract instances if addresses are available
+memory_contract = None
+food_contract = None
+
+if MEMORY_CONTRACT_ADDRESS and MEMORY_ABI and w3.is_connected():
+    try:
+        memory_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(MEMORY_CONTRACT_ADDRESS),
+            abi=MEMORY_ABI
+        )
+        print(f"✅ ColonyMemory contract loaded at {MEMORY_CONTRACT_ADDRESS}")
+    except Exception as e:
+        print(f"⚠️ Failed to load ColonyMemory contract: {e}")
+
+if FOOD_CONTRACT_ADDRESS and FOOD_ABI and w3.is_connected():
+    try:
+        food_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(FOOD_CONTRACT_ADDRESS),
+            abi=FOOD_ABI
+        )
+        print(f"✅ FoodToken contract loaded at {FOOD_CONTRACT_ADDRESS}")
+    except Exception as e:
+        print(f"⚠️ Failed to load FoodToken contract: {e}")
+
+# The `w3`, `acct`, and contract objects are now ready to be imported and used

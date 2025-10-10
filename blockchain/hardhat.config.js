@@ -1,5 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
-require("dotenv").config();
+require("dotenv").config({ path: "../.env" }); // Load from parent directory
 
 const { SEPOLIA_RPC_URL, PRIVATE_KEY } = process.env;
 

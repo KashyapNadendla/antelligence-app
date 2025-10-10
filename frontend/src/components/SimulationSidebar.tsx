@@ -30,7 +30,6 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [isQueenOpen, setIsQueenOpen] = useState(false);
   const [isPredatorOpen, setIsPredatorOpen] = useState(false);
-  const [isPheromoneOpen, setIsPheromoneOpen] = useState(false);
   const [isBlockchainOpen, setIsBlockchainOpen] = useState(false);
 
   const handleChange = (key: string, value: any) => {
@@ -171,7 +170,6 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
                 <SelectContent className="bg-amber-50 dark:bg-amber-900 border-amber-300 dark:border-amber-700">
                   <SelectItem value="LLM-Powered" className="text-amber-800 dark:text-amber-200">🧠 LLM-Powered</SelectItem>
                   <SelectItem value="Rule-Based" className="text-amber-800 dark:text-amber-200">⚡ Rule-Based</SelectItem>
-                  <SelectItem value="Hybrid" className="text-amber-800 dark:text-amber-200">🔄 Hybrid</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -185,10 +183,17 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
                 <SelectTrigger className="bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-amber-50 dark:bg-amber-900 border-amber-300 dark:border-amber-700">
-                  <SelectItem value="meta-llama/Llama-3.3-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.3 70B</SelectItem>
-                  <SelectItem value="gpt-4o-mini" className="text-amber-800 dark:text-amber-200">GPT-4o Mini</SelectItem>
-                  <SelectItem value="gpt-4o" className="text-amber-800 dark:text-amber-200">GPT-4o</SelectItem>
+                <SelectContent className="bg-amber-50 dark:bg-amber-900 border-amber-300 dark:border-amber-700 max-h-[400px]">
+                  <SelectItem value="gpt-4o" className="text-amber-800 dark:text-amber-200">GPT-4o (OpenAI)</SelectItem>
+                  <SelectItem value="gpt-4o-mini" className="text-amber-800 dark:text-amber-200">GPT-4o Mini (OpenAI)</SelectItem>
+                  <SelectItem value="meta-llama/Llama-3.3-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.3 70B (IO.NET)</SelectItem>
+                  <SelectItem value="meta-llama/Llama-3.1-405B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.1 405B (IO.NET)</SelectItem>
+                  <SelectItem value="meta-llama/Llama-3.1-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.1 70B (IO.NET)</SelectItem>
+                  <SelectItem value="gemini-1.5-flash" className="text-amber-800 dark:text-amber-200">Gemini 1.5 Flash (Google)</SelectItem>
+                  <SelectItem value="gemini-1.5-pro" className="text-amber-800 dark:text-amber-200">Gemini 1.5 Pro (Google)</SelectItem>
+                  <SelectItem value="mistral-small-latest" className="text-amber-800 dark:text-amber-200">Mistral Small (Mistral AI)</SelectItem>
+                  <SelectItem value="mistral-large-latest" className="text-amber-800 dark:text-amber-200">Mistral Large (Mistral AI)</SelectItem>
+                  <SelectItem value="deepseek-chat" className="text-amber-800 dark:text-amber-200">DeepSeek Chat (IO.NET)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -330,101 +335,6 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
                 </div>
               </>
             )}
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Pheromone Configuration */}
-        <Collapsible open={isPheromoneOpen} onOpenChange={setIsPheromoneOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between p-0 h-auto text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800">
-              <span className="text-base font-semibold">🧪 Pheromone System</span>
-              {isPheromoneOpen ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-4 mt-4">
-            <div>
-              <Label className="flex justify-between text-sm text-amber-800 dark:text-amber-200">
-                <span>🔄 Decay Rate</span>
-                <span className="text-amber-600 dark:text-amber-400">{settings.pheromone_decay_rate}</span>
-              </Label>
-              <Slider
-                min={0.01}
-                max={0.2}
-                step={0.01}
-                value={[settings.pheromone_decay_rate]}
-                onValueChange={([v]) => handleChange("pheromone_decay_rate", v)}
-                className="bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600"
-              />
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Rate at which pheromones fade</p>
-            </div>
-
-            <div>
-              <Label className="flex justify-between text-sm text-amber-800 dark:text-amber-200">
-                <span>🟢 Trail Deposit</span>
-                <span className="text-amber-600 dark:text-amber-400">{settings.trail_deposit}</span>
-              </Label>
-              <Slider
-                min={0.1}
-                max={5.0}
-                step={0.1}
-                value={[settings.trail_deposit]}
-                onValueChange={([v]) => handleChange("trail_deposit", v)}
-                className="bg-gradient-to-r from-green-500 via-green-400 to-green-600"
-              />
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Amount left when finding food</p>
-            </div>
-
-            <div>
-              <Label className="flex justify-between text-sm text-amber-800 dark:text-amber-200">
-                <span>🔴 Alarm Deposit</span>
-                <span className="text-amber-600 dark:text-amber-400">{settings.alarm_deposit}</span>
-              </Label>
-              <Slider
-                min={0.1}
-                max={5.0}
-                step={0.1}
-                value={[settings.alarm_deposit]}
-                onValueChange={([v]) => handleChange("alarm_deposit", v)}
-                className="bg-gradient-to-r from-red-500 via-red-400 to-red-600"
-              />
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Amount deposited when problems occur</p>
-            </div>
-
-            <div>
-              <Label className="flex justify-between text-sm text-amber-800 dark:text-amber-200">
-                <span>🔵 Recruitment Deposit</span>
-                <span className="text-amber-600 dark:text-amber-400">{settings.recruitment_deposit}</span>
-              </Label>
-              <Slider
-                min={0.1}
-                max={5.0}
-                step={0.1}
-                value={[settings.recruitment_deposit]}
-                onValueChange={([v]) => handleChange("recruitment_deposit", v)}
-                className="bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600"
-              />
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Amount deposited when help is needed</p>
-            </div>
-
-            <div>
-              <Label className="flex justify-between text-sm text-amber-800 dark:text-amber-200">
-                <span>⚡ Max Pheromone Value</span>
-                <span className="text-amber-600 dark:text-amber-400">{settings.max_pheromone_value}</span>
-              </Label>
-              <Slider
-                min={5.0}
-                max={20.0}
-                step={0.5}
-                value={[settings.max_pheromone_value]}
-                onValueChange={([v]) => handleChange("max_pheromone_value", v)}
-                className="bg-gradient-to-r from-yellow-500 via-orange-400 to-yellow-600"
-              />
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Maximum concentration limit</p>
-            </div>
           </CollapsibleContent>
         </Collapsible>
 
