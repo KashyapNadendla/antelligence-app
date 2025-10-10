@@ -1,6 +1,4 @@
-# 🐜 Antelligence: IO-Powered Ant Foraging Simulation
-
-🎯 **Hackathon Submission for Launch IO 2025**  
+# 🐜 Antelligence: LLM-Powered Autonomous Ant Foraging Simulation
 **Track:** Competitive Track - Autonomous Agents in the Real World  
 **Theme:** Multi-Agent Swarm Intelligence with IO Intelligence API Integration  
 **Teammates:** Kashyap Nadendla, Tanya Evita George, Zenith Mesa, Eshaan Mathakari
@@ -40,20 +38,11 @@
 - **Historical Analysis**: Track simulation performance over time
 - **Batch Testing**: Compare multiple configurations simultaneously
 - **Blockchain Metrics**: Transaction latency, gas usage, and success rates
-
-### 🎨 Modern UI/UX
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Smooth Animations**: Engaging visual feedback and transitions
-- **Dark/Light Mode**: Adaptive theming for different preferences
-- **Keyboard Shortcuts**: Efficient navigation and control
-- **Accessibility**: Screen reader friendly with proper ARIA labels
-
 ---
 
 ## 🚀 Getting Started
 
 Set up both the Python simulation and the Node.js-based smart contract system.
-
 
 ### ✅ Prerequisites
 
@@ -147,7 +136,7 @@ cd frontend
 npm run dev
 ```
 
-Visit `http://localhost:5173` to access the application.
+Visit `http://localhost:8080` to access the application.
 
 
 ## ⚙️ Usage
@@ -197,18 +186,7 @@ All food collection events are automatically recorded on the Base Sepolia testne
 - **Blockchain connection issues**: Check your RPC URL and network connectivity
 - **Contract deployment fails**: Ensure you have enough Base Sepolia ETH for gas fees
 
-### Debug Tools
-
-We provide several diagnostic tools to help troubleshoot issues:
-
-- **Blockchain Connection Test**: Run `python test-blockchain-connection.py` to verify blockchain setup
-- **API Key Validation**: Check backend logs for API authentication errors
-- **Transaction Monitoring**: Use Etherscan to verify transaction status
-
 ### Getting Help
-
-- Check the [Troubleshooting Guide](BLOCKCHAIN_TROUBLESHOOTING.md) for detailed solutions
-- Review the [Implementation Summary](BLOCKCHAIN_FIX_SUMMARY.md) for recent fixes
 - Open an issue on GitHub with detailed error logs
 
 ## 🤝 Contributing
@@ -234,6 +212,7 @@ MIT License – see [LICENSE](LICENSE)
 - **IO.net Team** – for the Intelligence API
 - **Jimenez-Romero et al.** – for LLM multi-agent inspiration
 - **Launch IO Hackathon** – for the platform and opportunity
+- SBP BRIMs 2025 for hosting us
 
 ## 📞 Contact & Support
 
@@ -244,7 +223,7 @@ MIT License – see [LICENSE](LICENSE)
 
 <div align="center">
 
-**Built with ❤️ for Launch IO Hackathon 2025**
+**Built with ❤️**
 
 💡 *Did you know? Real ant colonies exhibit swarm intelligence—no single ant knows the whole plan, but together, they solve complex problems. Similarly, decentralized AI agents can collaboratively outperform centralized models in dynamic environments.*
 
