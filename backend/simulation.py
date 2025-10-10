@@ -752,7 +752,7 @@ class SimpleForagingModel:
                     self.predators.append(PredatorAgent(i + 1000, self, is_llm))
 
         self.queen = QueenAnt(self, use_llm=self.use_llm_queen) if self.with_queen else None
-        print(f"[QUEEN DEBUG] Queen initialization - with_queen: {self.with_queen}, use_llm_queen: {self.use_llm_queen}, queen created: {self.queen is not None}")
+        # Queen initialization completed
         
         # Initialize queen report
         if self.queen:
@@ -766,23 +766,16 @@ class SimpleForagingModel:
         
         if self.queen:
             try:
-                print(f"[QUEEN DEBUG] Queen exists, use_llm_queen: {self.use_llm_queen}")
+                # Queen provides guidance to ants
                 guidance = self.queen.guide(self.selected_model)
-                print(f"[QUEEN DEBUG] Guidance provided for {len(guidance)} ants")
-                print(f"[QUEEN DEBUG] Queen report: {self.queen_llm_anomaly_rep}")
             except Exception as e:
                 self.log_error(f"Queen guidance failed: {str(e)}")
-                print(f"[QUEEN DEBUG] Queen guidance error: {str(e)}")
                 guidance = {}
-        else:
-            print(f"[QUEEN DEBUG] No queen created. with_queen: {self.with_queen}")
 
         self.metrics["ants_carrying_food"] = 0
         food_collected_this_step = 0
         for ant in self.ants:
             guided_pos = guidance.get(ant.unique_id)
-            if guided_pos:
-                print(f"[QUEEN DEBUG] Ant {ant.unique_id} guided to {guided_pos}")
             ant.step(guided_pos)
             if ant.carrying_food:
                 self.metrics["ants_carrying_food"] += 1
@@ -823,7 +816,7 @@ class SimpleForagingModel:
 
         # Debug output for blockchain
         if self.step_count % 5 == 0:  # Every 5 steps
-            print(f"[DEBUG] Step {self.step_count}: Food remaining: {food_piles_remaining}, Total collected: {self.metrics['food_collected']}, Blockchain logs: {len(self.blockchain_logs)}")
+            pass  # Step completed
 
     def get_neighborhood(self, x, y):
         neigh = [(x+dx, y+dy)
@@ -857,7 +850,7 @@ class SimpleForagingModel:
                 if is_llm_controlled_ant:
                     self.foraging_efficiency_grid[x, y] += self.food_collection_score_boost
 
-            print(f"[DEBUG] collect_food called #{self.food_collection_count} at {pos}, blockchain enabled: {self.enable_blockchain}")
+            # Collecting food at position
 
             # --- Blockchain Integration: Record food collection on-chain ---
             try:
@@ -873,9 +866,7 @@ class SimpleForagingModel:
                     from blockchain.client import w3, acct, memory_contract, MEMORY_CONTRACT_ADDRESS
                     
                     # Detailed debugging
-                    print(f"[BLOCKCHAIN DEBUG] memory_contract: {memory_contract is not None}")
-                    print(f"[BLOCKCHAIN DEBUG] MEMORY_CONTRACT_ADDRESS: {MEMORY_CONTRACT_ADDRESS}")
-                    print(f"[BLOCKCHAIN DEBUG] w3.is_connected(): {w3.is_connected()}")
+                    # Blockchain connection verified
                     
                     if not memory_contract:
                         raise Exception("memory_contract is None - contract not initialized")
@@ -888,7 +879,7 @@ class SimpleForagingModel:
                     food_id = self.food_collection_count
                     x_coord, y_coord = pos
                     
-                    print(f"[BLOCKCHAIN] Submitting transaction for food #{food_id} at ({x_coord}, {y_coord})")
+                    # Submitting blockchain transaction
                     
                     # Get nonce - use 'pending' to include pending transactions
                     nonce = w3.eth.get_transaction_count(acct.address, 'pending')
@@ -896,8 +887,6 @@ class SimpleForagingModel:
                     # Get current gas price and add 10% buffer to avoid underpricing
                     base_gas_price = w3.eth.gas_price
                     gas_price = int(base_gas_price * 1.1)
-                    
-                    print(f"[BLOCKCHAIN] Using nonce: {nonce}, gas price: {gas_price}")
                     
                     tx = memory_contract.functions.recordFood(
                         food_id, x_coord, y_coord
@@ -909,16 +898,14 @@ class SimpleForagingModel:
                         'chainId': w3.eth.chain_id
                     })
                     
-                    print(f"[BLOCKCHAIN] Transaction built, signing with account {acct.address}")
-                    
                     # Sign and send transaction
                     signed_tx = acct.sign_transaction(tx)
                     # Use raw_transaction (snake_case) for newer web3.py versions
                     raw_tx = signed_tx.raw_transaction if hasattr(signed_tx, 'raw_transaction') else signed_tx.rawTransaction
                     tx_hash_bytes = w3.eth.send_raw_transaction(raw_tx)
                     tx_hash = tx_hash_bytes.hex()
-                    
-                    print(f"[BLOCKCHAIN] Transaction sent: {tx_hash}, waiting for confirmation...")
+                    if not tx_hash.startswith('0x'):
+                        tx_hash = '0x' + tx_hash
                     
                     # Wait for confirmation with extended timeout
                     receipt = w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=60)
@@ -927,13 +914,8 @@ class SimpleForagingModel:
                     success = receipt['status'] == 1
                     gas_used = receipt['gasUsed']
                     
-                    print(f"[BLOCKCHAIN] ✅ Real transaction confirmed: {tx_hash}")
-                    print(f"[BLOCKCHAIN] Gas used: {gas_used}, Status: {'Success' if success else 'Failed'}")
-                    
                     # Add delay between transactions to prevent nonce conflicts
-                    # This ensures the previous transaction is fully processed
                     time.sleep(1.5)
-                    print(f"[BLOCKCHAIN] Cooling down for 1.5 seconds to prevent rate limiting...")
                     
                 except Exception as blockchain_error:
                     # Fall back to simulated transaction

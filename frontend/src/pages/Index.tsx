@@ -431,10 +431,13 @@ const Index = () => {
         <div className="flex-1 overflow-auto">
           <div className="p-4 space-y-6">
             {/* Simulation Grid */}
-            <Card>
-              <CardHeader>
-                <CardTitle>🗺️ Live Simulation Visualization</CardTitle>
-                <CardDescription>
+            <Card className="shadow-xl border-2 border-amber-200 dark:border-amber-700 transition-all duration-300 hover:shadow-2xl hover:border-amber-300 dark:hover:border-amber-600">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
+                <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                  <span className="animate-pulse">🗺️</span>
+                  Live Simulation Visualization
+                </CardTitle>
+                <CardDescription className="text-amber-700 dark:text-amber-300">
                   {simulationResults 
                     ? `Step ${currentStep + 1} of ${simulationResults.history.length}`
                     : "Configure your colony in the sidebar and click 'Run Simulation'"
@@ -446,24 +449,26 @@ const Index = () => {
                       size="sm" 
                       variant={showEfficiency ? "default" : "outline"}
                       onClick={() => setShowEfficiency(!showEfficiency)}
+                      className="transition-all duration-200 hover:scale-105"
                     >
-                      🔥 Efficiency Overlay
+                      <span className="animate-pulse">🔥</span> Efficiency Overlay
                     </Button>
                     <Button 
                       size="sm" 
                       variant={showPheromones ? "default" : "outline"}
                       onClick={() => setShowPheromones(!showPheromones)}
+                      className="transition-all duration-200 hover:scale-105"
                     >
-                      🧪 Show Pheromone Maps
+                      <span className="animate-bounce">🧪</span> Show Pheromone Maps
                     </Button>
                     
                     {/* Agent Type Indicator */}
-                    <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-sm">
-                      <span className="font-medium">Agent Type:</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        config.agent_type === "LLM-Powered" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
-                        config.agent_type === "Rule-Based" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
-                        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                    <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-md text-sm shadow-sm border border-gray-200 dark:border-gray-600">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Agent Type:</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${
+                        config.agent_type === "LLM-Powered" ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 dark:from-blue-900 dark:to-blue-800 dark:text-blue-200 shadow-sm" :
+                        config.agent_type === "Rule-Based" ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 dark:from-green-900 dark:to-green-800 dark:text-green-200 shadow-sm" :
+                        "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 dark:from-purple-900 dark:to-purple-800 dark:text-purple-200 shadow-sm"
                       }`}>
                         {config.agent_type}
                       </span>
@@ -505,48 +510,51 @@ const Index = () => {
 
                   {/* Vertical Legend */}
                   <div className="w-48 space-y-4">
-                    <div>
-                      <h4 className="font-semibold text-sm mb-3 text-amber-800 dark:text-amber-200">🐜 Colony Legend</h4>
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-700 shadow-lg">
+                      <h4 className="font-semibold text-sm mb-3 text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                        <span className="animate-pulse">🐜</span>
+                        Colony Legend
+                      </h4>
                       <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                          <span>🐜 Ants</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-blue-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🐜 Ants</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-green-500 rounded"></div>
-                          <span>🍯 Food</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-green-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🍯 Food</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-purple-500 rounded"></div>
-                          <span>👸 Queen</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-purple-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">👸 Queen</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-red-500 rounded"></div>
-                          <span>🦗 Predators</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-red-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🦗 Predators</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-emerald-500 rounded"></div>
-                          <span>🟢 Trail Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-emerald-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🟢 Trail Pheromone</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-red-500 rounded"></div>
-                          <span>🔴 Alarm Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-red-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🔴 Alarm Pheromone</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                          <span>🔵 Recruitment Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-blue-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🔵 Recruitment Pheromone</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-amber-500 rounded"></div>
-                          <span>🟠 Fear Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-amber-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🟠 Fear Pheromone</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-orange-500 rounded"></div>
-                          <span>🔥 Efficiency</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-orange-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🔥 Efficiency</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-gray-500 rounded"></div>
-                          <span>🏠 Nest</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
+                          <div className="w-4 h-4 bg-gray-500 rounded shadow-sm"></div>
+                          <span className="text-gray-700 dark:text-gray-300">🏠 Nest</span>
                         </div>
                       </div>
                     </div>
@@ -557,9 +565,19 @@ const Index = () => {
                           onClick={runSimulation}
                           disabled={isLoading}
                           size="sm"
-                          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isLoading ? "🐜 Running..." : "🚀 Start Foraging"}
+                          {isLoading ? (
+                            <>
+                              <span className="animate-spin mr-2">🐜</span>
+                              Running...
+                            </>
+                          ) : (
+                            <>
+                              <span className="animate-bounce mr-2">🚀</span>
+                              Start Foraging
+                            </>
+                          )}
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2 text-center">
                           Click to begin the simulation
@@ -587,7 +605,10 @@ const Index = () => {
               <>
                 <Separator />
                 <div>
-                  <h2 className="text-2xl font-bold mb-4">📈 Performance Analysis</h2>
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <span className="animate-pulse">📈</span>
+                    Performance Analysis
+                  </h2>
                   <PerformanceCharts
                     foodDepletionHistory={simulationResults.food_depletion_history ?? []}
                     currentMetrics={currentMetrics}
@@ -601,7 +622,10 @@ const Index = () => {
             {/* Historical Performance */}
             <Separator />
             <div>
-              <h2 className="text-2xl font-bold mb-4">📊 Historical Performance</h2>
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                <span className="animate-bounce">📊</span>
+                Historical Performance
+              </h2>
               <HistoricalPerformance />
             </div>
 
@@ -611,11 +635,14 @@ const Index = () => {
                 <Separator />
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">🔗 Blockchain Analytics</h2>
+                    <h2 className="text-2xl font-bold flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                      <span className="animate-pulse">🔗</span>
+                      Blockchain Analytics
+                    </h2>
                     <Button 
                       variant="outline" 
                       onClick={() => navigate('/comparison')}
-                      className="gap-2"
+                      className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-lg"
                     >
                       <BarChart3 className="h-4 w-4" />
                       Simulation Comparison Lab
@@ -631,7 +658,10 @@ const Index = () => {
             {/* Comparison Panel */}
             <Separator />
             <div>
-              <h2 className="text-2xl font-bold mb-4">⚔️ Comparison Analysis</h2>
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                <span className="animate-bounce">⚔️</span>
+                Comparison Analysis
+              </h2>
               <ComparisonPanel 
                 config={config}
                 apiBaseUrl={API_BASE_URL}
@@ -642,9 +672,12 @@ const Index = () => {
             {simulationResults && (
               <>
                 <Separator />
-                <Card>
-                  <CardHeader>
-                    <CardTitle>🔧 Technical Details</CardTitle>
+                <Card className="shadow-lg border border-amber-200 dark:border-amber-700">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-amber-50 dark:from-gray-900/20 dark:to-amber-900/20">
+                    <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                      <span className="animate-pulse">🔧</span>
+                      Technical Details
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -694,30 +727,6 @@ const Index = () => {
                       </div>
                     </div>
 
-                    {/* Blockchain Transaction Details */}
-                    {simulationResults.blockchain_logs && simulationResults.blockchain_logs.length > 0 && (
-                      <>
-                        <Separator className="my-4" />
-                        <div>
-                          <h4 className="font-semibold mb-2 text-blue-600">🔗 Blockchain Transactions</h4>
-                          <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg max-h-40 overflow-y-auto">
-                            <div className="space-y-2 text-xs">
-                              {simulationResults.blockchain_logs.slice(-5).reverse().map((log, index) => (
-                                <div key={index} className="flex items-start gap-2">
-                                  <span className="text-blue-500 mt-0.5">🔗</span>
-                                  <span className="text-blue-700 dark:text-blue-300">{log}</span>
-                                </div>
-                              ))}
-                            </div>
-                            {simulationResults.blockchain_logs.length > 5 && (
-                              <div className="text-xs text-blue-600 mt-2">
-                                +{simulationResults.blockchain_logs.length - 5} more transactions
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
 
                     {/* Blockchain Status */}
                     <Separator className="my-4" />

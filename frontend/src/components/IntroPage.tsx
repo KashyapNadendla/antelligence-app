@@ -46,7 +46,14 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
       {/* Hero Section */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="text-center -mt-48">
-          <h1 className="text-8xl font-black text-gray-900 mb-12 tracking-tight drop-shadow-2xl">
+          <div className="flex items-center justify-center mb-8">
+            <img 
+              src="/ant-logo.jpeg" 
+              alt="Antelligence Logo" 
+              className="w-20 h-20 object-contain rounded-2xl shadow-2xl border-4 border-amber-200 dark:border-amber-700 mr-6"
+            />
+          </div>
+          <h1 className="text-8xl font-black bg-gradient-to-r from-amber-600 via-orange-500 to-red-500 bg-clip-text text-transparent mb-12 tracking-tight drop-shadow-2xl">
             Antelligence
           </h1>
           <Button 
@@ -182,7 +189,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
                 </p>
                 
                 <ul className="space-y-2 text-amber-700 dark:text-amber-300">
-                  <li><strong>🔍 Transparent Food Collection:</strong> Every time an ant successfully collects a piece of food, this event is immutably logged on an Ethereum-compatible blockchain (like the Sepolia Testnet).</li>
+                  <li><strong>🔍 Transparent Food Collection:</strong> Every time an ant successfully collects a piece of food, this event is immutably logged on an Ethereum-compatible blockchain (like the Base Sepolia Testnet).</li>
                   <li><strong>📋 "Colony Memory" Contract:</strong> This smart contract acts as a public ledger, storing records of food collection and potentially other colony activities.</li>
                 </ul>
                 <p className="text-amber-700 dark:text-amber-300">

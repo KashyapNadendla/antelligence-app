@@ -87,6 +87,15 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
     return data;
   }, [currentMetrics, performanceData]);
 
+  // Check if we should show the agent type chart (only if both types have collected food)
+  const shouldShowAgentTypeChart = React.useMemo(() => {
+    const llmFood = currentMetrics?.food_collected_by_llm ?? performanceData?.food_collected_by_llm ?? 0;
+    const ruleFood = currentMetrics?.food_collected_by_rule ?? performanceData?.food_collected_by_rule ?? 0;
+    
+    // Show chart only if both agent types have collected food
+    return llmFood > 0 && ruleFood > 0;
+  }, [currentMetrics, performanceData]);
+
   // Prepare pheromone summary data for chart
   const pheromoneChartData = React.useMemo(() => {
     if (!pheromoneData) return [];
@@ -151,38 +160,40 @@ export const PerformanceCharts: React.FC<PerformanceChartsProps> = ({
           </CardContent>
         </Card>
 
-        {/* Food Collection by Agent Type */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Food Collected by Agent Type</CardTitle>
-            <CardDescription>
-              Compare efficiency between LLM-powered and rule-based agents
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={agentEfficiencyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="agentType"
-                  label={{ value: 'Agent Type', position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis 
-                  label={{ value: 'Food Collected', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip 
-                  formatter={(value) => [value, 'Food Collected']}
-                />
-                <Legend />
-                <Bar 
-                  dataKey="foodCollected" 
-                  fill="#8884d8"
-                  name="Food Collected"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Food Collection by Agent Type - Only show if both types have collected food */}
+        {shouldShowAgentTypeChart && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Food Collected by Agent Type</CardTitle>
+              <CardDescription>
+                Compare efficiency between LLM-powered and rule-based agents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={agentEfficiencyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="agentType"
+                    label={{ value: 'Agent Type', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'Food Collected', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value) => [value, 'Food Collected']}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="foodCollected" 
+                    fill="#8884d8"
+                    name="Food Collected"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Pheromone and Efficiency Charts */}

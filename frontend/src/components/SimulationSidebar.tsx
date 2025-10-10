@@ -38,12 +38,12 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
 
   if (isCollapsed) {
     return (
-      <div className="w-16 bg-gradient-sidebar border-r border-sidebar-border flex flex-col items-center py-4">
+      <div className="w-16 bg-gradient-to-b from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-r border-amber-200 dark:border-amber-700 flex flex-col items-center py-4 shadow-lg">
         <Button
           onClick={onToggleCollapse}
           variant="ghost"
           size="icon"
-          className="mb-4"
+          className="mb-4 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all duration-200 hover:scale-110"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -52,15 +52,19 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
   }
 
   return (
-    <div className="w-80 bg-gradient-sidebar border-r border-sidebar-border flex flex-col h-full">
+    <div className="w-80 bg-gradient-to-b from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-r border-amber-200 dark:border-amber-700 flex flex-col h-full shadow-xl">
       {/* Header */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-amber-200 dark:border-amber-700 bg-gradient-to-r from-amber-100/50 to-orange-100/50 dark:from-amber-800/20 dark:to-orange-800/20">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200">🐜 Colony Settings</h2>
+          <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
+            <span className="animate-pulse">🐜</span>
+            Colony Settings
+          </h2>
           <Button
             onClick={onToggleCollapse}
             variant="ghost"
             size="icon"
+            className="hover:bg-amber-200 dark:hover:bg-amber-800 transition-all duration-200 hover:scale-110"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -189,8 +193,8 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
                   <SelectItem value="meta-llama/Llama-3.3-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.3 70B (IO.NET)</SelectItem>
                   <SelectItem value="meta-llama/Llama-3.1-405B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.1 405B (IO.NET)</SelectItem>
                   <SelectItem value="meta-llama/Llama-3.1-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.1 70B (IO.NET)</SelectItem>
-                  <SelectItem value="gemini-1.5-flash" className="text-amber-800 dark:text-amber-200">Gemini 1.5 Flash (Google)</SelectItem>
-                  <SelectItem value="gemini-1.5-pro" className="text-amber-800 dark:text-amber-200">Gemini 1.5 Pro (Google)</SelectItem>
+                  <SelectItem value="gemini-2.0-flash-exp" className="text-amber-800 dark:text-amber-200">Gemini 2.0 Flash (Google)</SelectItem>
+                  <SelectItem value="gemini-exp-1206" className="text-amber-800 dark:text-amber-200">Gemini 2.0 Pro (Google)</SelectItem>
                   <SelectItem value="mistral-small-latest" className="text-amber-800 dark:text-amber-200">Mistral Small (Mistral AI)</SelectItem>
                   <SelectItem value="mistral-large-latest" className="text-amber-800 dark:text-amber-200">Mistral Large (Mistral AI)</SelectItem>
                   <SelectItem value="deepseek-chat" className="text-amber-800 dark:text-amber-200">DeepSeek Chat (IO.NET)</SelectItem>
@@ -381,13 +385,23 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
       </div>
 
       {/* Run Button */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-amber-200 dark:border-amber-700 bg-gradient-to-r from-amber-100/50 to-orange-100/50 dark:from-amber-800/20 dark:to-orange-800/20">
         <Button
           onClick={onRunSimulation}
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? "🐜 Running..." : "🚀 Run Simulation"}
+          {isLoading ? (
+            <>
+              <span className="animate-spin mr-2">🐜</span>
+              Running...
+            </>
+          ) : (
+            <>
+              <span className="animate-bounce mr-2">🚀</span>
+              Run Simulation
+            </>
+          )}
         </Button>
       </div>
     </div>

@@ -23,20 +23,20 @@ def load_contract_abi(contract_name):
         return None
 
 # Get RPC URL and Private Key from environment variables
-# Prioritize local chain RPC if available, otherwise fall back to Sepolia
+# Prioritize local chain RPC if available, otherwise fall back to Base Sepolia
 _CHAIN_RPC = os.getenv("CHAIN_RPC")
-_SEPOLIA_RPC_URL = os.getenv("SEPOLIA_RPC_URL")
+_BASE_SEPOLIA_RPC_URL = os.getenv("BASE_SEPOLIA_RPC_URL")
 
 # Choose which RPC URL to use
 RPC_URL = None
 if _CHAIN_RPC and _CHAIN_RPC != "http://127.0.0.1:8545": # Check if local RPC is set and not just default placeholder
     RPC_URL = _CHAIN_RPC
     print(f"Using local RPC: {RPC_URL}")
-elif _SEPOLIA_RPC_URL:
-    RPC_URL = _SEPOLIA_RPC_URL
-    print(f"Using Sepolia RPC: {RPC_URL}")
+elif _BASE_SEPOLIA_RPC_URL:
+    RPC_URL = _BASE_SEPOLIA_RPC_URL
+    print(f"Using Base Sepolia RPC: {RPC_URL}")
 else:
-    raise ValueError("Neither CHAIN_RPC nor SEPOLIA_RPC_URL is set in .env. Please configure at least one.")
+    raise ValueError("Neither CHAIN_RPC nor BASE_SEPOLIA_RPC_URL is set in .env. Please configure at least one.")
 
 
 _PRIV_KEY = os.getenv("PRIVATE_KEY")

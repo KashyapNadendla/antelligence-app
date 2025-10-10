@@ -181,12 +181,12 @@ export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
                   </span>
                 </div>
                 <a
-                  href={`https://sepolia.etherscan.io/tx/${tx.tx_hash}`}
+                  href={`https://sepolia.basescan.org/tx/${tx.tx_hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-2 px-2 py-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors whitespace-nowrap"
                 >
-                  View on Etherscan
+                  View on Basescan
                 </a>
               </div>
             ))}

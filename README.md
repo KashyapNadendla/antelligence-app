@@ -9,41 +9,44 @@
 
 ## ✨ Features
 
-- **LLM-Powered Ants**  
-  Individual ant agents make foraging decisions (move toward food, random, stay) by querying Large Language Models (LLMs) from [Intelligence.io](https://intelligence.io), enabling flexible and intelligent behavior.
+### 🤖 Multi-Model LLM Support
+- **10+ AI Models**: OpenAI GPT-4o, GPT-4o Mini, Google Gemini 2.0 Flash/Pro, Mistral Small/Large, Meta Llama 3.3/3.1, DeepSeek Chat
+- **LLM-Powered Ants**: Individual ant agents make intelligent foraging decisions using various AI models
+- **Rule-Based Ants**: Baseline agents with predefined heuristics for comparative analysis
+- **Model Comparison**: Built-in tools to compare performance across different AI models
 
-- **Rule-Based Ants**  
-  Baseline agents operating on simple, predefined heuristics for comparative analysis.
+### 👑 Advanced Queen Ant System
+- **Strategic Guidance**: Queen provides colony-wide coordination and anomaly detection
+- **LLM-Powered Queen**: Optional AI-driven queen for meta-coordination
+- **Performance Analytics**: Queen reports on colony efficiency and optimization opportunities
 
-- **Hybrid Colony**  
-  Mix LLM-powered and rule-based ants to observe comparative performance and emergent behaviors.
+### 🧪 Bio-Inspired Pheromone System
+- **Trail Pheromones**: Guide ants on successful foraging routes
+- **Alarm Pheromones**: Signal anomalies or API errors
+- **Recruitment Pheromones**: Indicate zones needing exploration
+- **Fear Pheromones**: Warn of predator presence
+- **Adaptive Decay**: Pheromones decay over time to prevent stagnation
 
-- **Queen Ant Overseer**  
-  An optional central "Queen" agent that offers strategic guidance. Operates via heuristics or its own LLM for meta-coordination, anomaly reporting, and system optimization.
+### 🔗 Real Blockchain Integration
+- **Base Sepolia Testnet**: All food collection events recorded as real Ethereum transactions
+- **Smart Contracts**: Custom `ColonyMemory` and `FoodToken` contracts
+- **Gas Optimization**: Intelligent gas pricing and nonce management
+- **Transaction Monitoring**: Real-time Etherscan integration with latency tracking
+- **Transparency**: Immutable record of all colony activities
 
-- **Pheromone System**  
-  A bio-inspired communication system for indirect information exchange and learning among LLM agents.
-  
-  - **Trail Pheromones**: Guide ants on successful foraging routes.
-  - **Alarm Pheromones**: Signal anomalies or issues like API errors.
-  - **Recruitment Pheromones**: Indicate zones needing help or more exploration.
-  
-  > Pheromones decay over time to keep behavior adaptive and prevent stagnation.
+### 📊 Advanced Analytics & Visualization
+- **Real-time Dashboard**: Modern React interface with live simulation updates
+- **Performance Charts**: Food depletion, agent efficiency, and pheromone intensity
+- **Historical Analysis**: Track simulation performance over time
+- **Batch Testing**: Compare multiple configurations simultaneously
+- **Blockchain Metrics**: Transaction latency, gas usage, and success rates
 
-- **Blockchain Integration**  
-  Logs food collection events as transparent transactions on an Ethereum-compatible blockchain via a custom `ColonyMemory` smart contract. Includes gas pricing and nonce management.
-
-- **Live Visualization**  
-  Streamlit dashboard for real-time simulation of:
-  - Ant movement
-  - Pheromone maps (Trail, Alarm, Recruitment)
-  - Foraging heatmaps
-
-- **Performance Metrics**  
-  Tracks KPIs such as:
-  - Food collected by agent type
-  - API call count
-  - Food depletion rates
+### 🎨 Modern UI/UX
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Smooth Animations**: Engaging visual feedback and transitions
+- **Dark/Light Mode**: Adaptive theming for different preferences
+- **Keyboard Shortcuts**: Efficient navigation and control
+- **Accessibility**: Screen reader friendly with proper ARIA labels
 
 ---
 
@@ -54,12 +57,16 @@ Set up both the Python simulation and the Node.js-based smart contract system.
 
 ### ✅ Prerequisites
 
-- Python 3.9+
-- Node.js (LTS recommended)
-- Hardhat
-- Intelligence.io API key
-- Ethereum wallet (with Sepolia ETH)
-- Alchemy/Infura Sepolia RPC (optional)
+- **Python 3.11+** (recommended for optimal performance)
+- **Node.js 18+** (LTS recommended)
+- **Hardhat** (for smart contract deployment)
+- **API Keys** (choose one or more):
+  - Intelligence.io API key (for IO.NET models)
+  - OpenAI API key (for GPT models)
+  - Google Gemini API key (for Gemini models)
+  - Mistral API key (for Mistral models)
+- **Ethereum Wallet** with Base Sepolia ETH (for blockchain integration)
+- **Alchemy/Infura** Base Sepolia RPC URL (for blockchain connectivity)
 
 ---
 
@@ -72,63 +79,137 @@ git clone https://github.com/kashyapnadendla/Antelligence-app.git
 cd Antelligence-app
 ```
 
-### 2. Set Up Python Environment
+### 2. Set Up Backend Environment
 
 ```bash
+# Create virtual environment
 python -m venv venv
-# Activate:
+
+# Activate virtual environment
 # Windows
 .\venv\Scripts\activate
 # macOS/Linux
 source venv/bin/activate
 
+# Install backend dependencies
+cd backend
 pip install -r requirements.txt
+cd ..
 ```
 
-### 3. Configure .env
+### 3. Set Up Frontend Environment
 
-Create a `.env` file based on `.env.example`.
+```bash
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+```
+
+### 4. Configure Environment Variables
+
+Create a `.env` file in the project root based on `env.example.txt`:
 
 ```env
-IO_SECRET_KEY="YOUR_INTELLIGENCE_IO_API_KEY_HERE"
-SEPOLIA_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
-PRIVATE_KEY="0xYOUR_PRIVATE_KEY"
-CHAIN_RPC="http://127.0.0.1:8545"
+# API Keys (choose one or more based on your needs)
+IO_SECRET_KEY="your_intelligence_io_api_key"
+OPENAI_API_KEY="your_openai_api_key"
+GEMINI_API_KEY="your_google_gemini_api_key"
+MISTRAL_API_KEY="your_mistral_api_key"
+
+# Blockchain Configuration
+BASE_SEPOLIA_RPC_URL="https://base-sepolia.g.alchemy.com/v2/your_alchemy_key"
+PRIVATE_KEY="0xyour_private_key"
 FOOD_ADDR="0x..."
 MEMORY_ADDR="0x..."
 ```
 
-### 4. Deploy Smart Contracts
+### 5. Deploy Smart Contracts
 
 ```bash
 cd blockchain
 npm install
 npx hardhat compile
-npx hardhat run scripts/deploy.js --network sepolia
+npx hardhat run scripts/deploy.js --network baseSepolia
 ```
 
-Update `.env` with the deployed contract addresses from the output.
+Copy the deployed contract addresses to your `.env` file.
+
+### 6. Start the Application
+
+```bash
+# Start backend (from project root)
+cd backend
+python -m uvicorn main:app --reload --port 8001
+
+# In another terminal, start frontend
+cd frontend
+npm run dev
+```
+
+Visit `http://localhost:5173` to access the application.
 
 
 ## ⚙️ Usage
 
-Configure settings via Streamlit:
+### 🎮 Running Simulations
 
-- Grid size, food quantity
-- Ant type: LLM, Rule-based, Hybrid
-- LLM model and prompts
-- Enable/disable Queen
-- Set pheromone parameters
-- Paste ABI and contract addresses
+1. **Configure Your Colony**:
+   - Set grid size and food quantity
+   - Choose agent type: LLM-Powered or Rule-Based
+   - Select AI model from 10+ available options
+   - Enable/disable Queen Ant guidance
+   - Adjust simulation parameters
 
-Click 🚀 **Start Live Simulation** to observe real-time activity and blockchain updates.
+2. **Start Simulation**:
+   - Click "🚀 Start Foraging" to begin
+   - Watch real-time ant movement and pheromone trails
+   - Monitor blockchain transactions on Etherscan
+   - View performance metrics and analytics
+
+3. **Advanced Features**:
+   - Use Simulation Comparison Lab for batch testing
+   - Toggle pheromone visualization overlays
+   - Analyze historical performance data
+   - Export results for further analysis
+
+### ⌨️ Keyboard Shortcuts
+
+- **Space**: Play/Pause simulation
+- **←/→**: Step forward/backward
+- **Home/End**: Go to start/end
+- **R**: Replay from beginning
+
+### 🔗 Blockchain Integration
+
+All food collection events are automatically recorded on the Base Sepolia testnet:
+- View transactions on [Basescan](https://sepolia.basescan.org)
+- Monitor gas usage and transaction latency
+- Track colony performance over time
 
 ## 🧩 Troubleshooting
 
-- **PRIVATE_KEY not set**: Ensure `.env` is correctly loaded.
-- **Insufficient funds**: Fund wallet using [sepoliafaucet.com](https://sepoliafaucet.com)
-- **Invalid ABI**: Use the `abi` key from `ColonyMemory.json`
-- **Version errors**: Upgrade `web3` and `eth-account` packages.
+### Common Issues
+
+- **PRIVATE_KEY not set**: Ensure `.env` file is in the project root and correctly formatted
+- **Insufficient funds**: Fund your wallet using [Base Sepolia faucet](https://faucet.quicknode.com/base/sepolia) or [Base Bridge](https://bridge.base.org/deposit)
+- **API Key errors**: Verify your API keys are valid and have sufficient credits
+- **Blockchain connection issues**: Check your RPC URL and network connectivity
+- **Contract deployment fails**: Ensure you have enough Base Sepolia ETH for gas fees
+
+### Debug Tools
+
+We provide several diagnostic tools to help troubleshoot issues:
+
+- **Blockchain Connection Test**: Run `python test-blockchain-connection.py` to verify blockchain setup
+- **API Key Validation**: Check backend logs for API authentication errors
+- **Transaction Monitoring**: Use Etherscan to verify transaction status
+
+### Getting Help
+
+- Check the [Troubleshooting Guide](BLOCKCHAIN_TROUBLESHOOTING.md) for detailed solutions
+- Review the [Implementation Summary](BLOCKCHAIN_FIX_SUMMARY.md) for recent fixes
+- Open an issue on GitHub with detailed error logs
 
 ## 🤝 Contributing
 

@@ -79,11 +79,16 @@ async def health_check():
     return {"status": "healthy", "service": "antelligence-api"}
 
 # Define the list of allowed origins for CORS
+# Production-ready CORS configuration
 origins = [
     "http://localhost",
     "http://localhost:3000",  # Default React port
     "http://localhost:5173",  # Default Vite port
-    "*"  # Allow all for development simplicity
+    "http://localhost:8080",  # Your current frontend port
+    "http://127.0.0.1:5173",  # Vite sometimes uses 127.0.0.1 instead of localhost
+    "http://127.0.0.1:8080",  # Your current frontend port (127.0.0.1 variant)
+    "https://yourdomain.com",  # Replace with your production domain
+    "https://antelligence.yourdomain.com",  # Replace with your production subdomain
 ]
 
 # Add the CORS middleware to the application
@@ -91,8 +96,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],  # Allow all methods including OPTIONS
+    allow_headers=["*"],  # Allow all headers to prevent CORS preflight issues
 )
 
 def convert_pheromone_maps(model) -> PheromoneMapData:
