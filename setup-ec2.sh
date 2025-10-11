@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Antelligence EC2 Setup Script for 18.219.29.154
-echo "🚀 Setting up Antelligence on EC2 instance 18.219.29.154..."
+# Antelligence EC2 Setup Script for 44.220.130.72
+echo "🚀 Setting up Antelligence on EC2 instance 44.220.130.72..."
 
 # Update system
 echo "📦 Updating system packages..."
@@ -45,7 +45,7 @@ echo ""
 echo "📋 Next steps:"
 echo "1. Edit .env file with your actual API key"
 echo "2. Run: ./deploy.sh"
-echo "3. Access your app at: http://18.219.29.154:8001"
+echo "3. Access your app at: http://44.220.130.72:8001"
 echo ""
 echo "🔧 To edit .env file:"
 echo "   nano .env"
