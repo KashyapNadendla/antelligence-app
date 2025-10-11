@@ -91,11 +91,16 @@ async def health_check():
     return {"status": "healthy", "service": "antelligence-api"}
 
 # Define the list of allowed origins for CORS
+# Production-ready CORS configuration
 origins = [
     "http://localhost",
     "http://localhost:3000",  # Default React port
     "http://localhost:5173",  # Default Vite port
-    "*"  # Allow all for development simplicity
+    "http://localhost:8080",  # Your current frontend port
+    "http://127.0.0.1:5173",  # Vite sometimes uses 127.0.0.1 instead of localhost
+    "http://127.0.0.1:8080",  # Your current frontend port (127.0.0.1 variant)
+    "https://yourdomain.com",  # Replace with your production domain
+    "https://antelligence.yourdomain.com",  # Replace with your production subdomain
 ]
 
 # Add the CORS middleware to the application
@@ -103,8 +108,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],  # Allow all methods including OPTIONS
+    allow_headers=["*"],  # Allow all headers to prevent CORS preflight issues
 )
 
 def convert_pheromone_maps(model) -> PheromoneMapData:
@@ -307,13 +312,20 @@ async def run_simulation(config: SimulationConfig):
         final_pheromone_data = convert_pheromone_maps(model)
         final_efficiency_data = convert_efficiency_data(model)
 
-        # Collect blockchain logs (always enabled)
+        # Collect blockchain logs and transactions (always enabled)
         blockchain_logs = []
+        blockchain_transactions = []
         if hasattr(model, 'blockchain_logs'):
             blockchain_logs = model.blockchain_logs
             print(f"[BLOCKCHAIN] Collected {len(blockchain_logs)} blockchain logs")
         else:
             print(f"[BLOCKCHAIN] No blockchain logs attribute found on model")
+        
+        if hasattr(model, 'blockchain_transactions'):
+            blockchain_transactions = model.blockchain_transactions
+            print(f"[BLOCKCHAIN] Collected {len(blockchain_transactions)} blockchain transactions")
+        else:
+            print(f"[BLOCKCHAIN] No blockchain transactions attribute found on model")
 
         return SimulationResult(
             config=config,
@@ -324,7 +336,8 @@ async def run_simulation(config: SimulationConfig):
             initial_food_count=model.initial_food_count,
             final_pheromone_data=final_pheromone_data,
             final_efficiency_data=final_efficiency_data,
-            blockchain_logs=blockchain_logs
+            blockchain_logs=blockchain_logs,
+            blockchain_transactions=blockchain_transactions
         )
 
     except Exception as e:

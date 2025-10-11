@@ -65,13 +65,21 @@ export const SimulationControls = ({
         {/* Compact Header Row */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <img 
-                src="/ant-logo.jpeg" 
-                alt="Antelligence Logo" 
-                className="w-8 h-8 object-contain"
-              />
-              <h1 className="text-2xl font-bold text-foreground">Antelligence</h1>
+            <div className="flex items-center gap-3">
+              <div className="relative group">
+                <img 
+                  src="/ant-logo.jpeg" 
+                  alt="Antelligence Logo" 
+                  className="w-10 h-10 object-contain rounded-lg shadow-lg border-2 border-amber-200 dark:border-amber-700 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl"
+                />
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-amber-400/20 to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-bold text-foreground bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                  Antelligence
+                </h1>
+                <p className="text-xs text-muted-foreground -mt-1">AI-Powered Ant Colony Simulation</p>
+              </div>
             </div>
             <TooltipProvider>
               <Tooltip>

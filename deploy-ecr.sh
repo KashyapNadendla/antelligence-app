@@ -4,8 +4,8 @@
 echo "🚀 Starting Antelligence ECR deployment..."
 
 # ECR Repository details
-ECR_REPO="611410719186.dkr.ecr.us-east-2.amazonaws.com/antelligence"
-REGION="us-east-2"
+ECR_REPO="983240697534.dkr.ecr.us-east-1.amazonaws.com/antelligence"
+REGION="us-east-1"
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then

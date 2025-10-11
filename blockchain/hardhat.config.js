@@ -1,18 +1,19 @@
 require("@nomicfoundation/hardhat-toolbox");
-require("dotenv").config();
+require("dotenv").config({ path: "../.env" }); // Load from parent directory
 
-const { SEPOLIA_RPC_URL, PRIVATE_KEY } = process.env;
+const { BASE_SEPOLIA_RPC_URL, PRIVATE_KEY } = process.env;
 
 module.exports = {
   solidity: "0.8.24",
   networks: {
     hardhat: {},
 
-    ...(SEPOLIA_RPC_URL && PRIVATE_KEY && PRIVATE_KEY.length === 66
+    ...(BASE_SEPOLIA_RPC_URL && PRIVATE_KEY && PRIVATE_KEY.length === 66
       ? {
-          sepolia: {
-            url: SEPOLIA_RPC_URL,
+          baseSepolia: {
+            url: BASE_SEPOLIA_RPC_URL,
             accounts: [PRIVATE_KEY],
+            chainId: 84532, // Base Sepolia testnet chain ID
           },
         }
       : {}),

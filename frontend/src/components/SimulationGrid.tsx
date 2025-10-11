@@ -79,7 +79,7 @@ export const SimulationGrid = ({
   // Default nest position to center if not provided
   const nest = nestPosition || [Math.floor(gridWidth / 2), Math.floor(gridHeight / 2)];
 
-  // Create efficiency overlay
+  // Create enhanced efficiency overlay with dynamic heatmap
   const renderEfficiencyOverlay = () => {
     if (!efficiencyData) return null;
 
@@ -91,8 +91,27 @@ export const SimulationGrid = ({
         {efficiencyData.efficiency_grid.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
-            const opacity = Math.min(value / maxEfficiency, 1.0);
-            if (opacity < 0.1) return null; // Skip very low values for better performance
+            const intensity = Math.min(value / maxEfficiency, 1.0);
+            if (intensity < 0.05) return null; // Skip very low values for better performance
+            
+            // Enhanced color gradient: yellow -> orange -> red based on intensity
+            let color;
+            let glowIntensity;
+            
+            if (intensity < 0.3) {
+              // Low intensity: yellow-green
+              color = `rgba(255, 215, 0, ${intensity * 0.8})`; // Gold
+              glowIntensity = intensity * 0.4;
+            } else if (intensity < 0.7) {
+              // Medium intensity: orange
+              color = `rgba(255, 140, 0, ${intensity * 0.9})`; // Dark orange
+              glowIntensity = intensity * 0.6;
+            } else {
+              // High intensity: red-orange (hotspots)
+              color = `rgba(255, 69, 0, ${intensity * 1.0})`; // Red-orange
+              glowIntensity = intensity * 0.8;
+            }
+
             return (
               <div
                 key={`efficiency-${x}-${y}`}
@@ -102,9 +121,10 @@ export const SimulationGrid = ({
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: `rgba(255, 107, 53, ${opacity * 0.7})`, // Increased base opacity
-                  border: opacity > 0.2 ? '2px solid rgba(255, 107, 53, 0.9)' : 'none',
-                  boxShadow: opacity > 0.5 ? '0 0 8px rgba(255, 107, 53, 0.6)' : 'none',
+                  backgroundColor: color,
+                  border: intensity > 0.3 ? `2px solid rgba(255, 140, 0, ${0.8 + intensity * 0.2})` : 'none',
+                  boxShadow: intensity > 0.2 ? `0 0 ${8 + intensity * 8}px rgba(255, 140, 0, ${glowIntensity})` : 'none',
+                  borderRadius: intensity > 0.5 ? '4px' : '0px',
                 }}
               />
             );
@@ -114,7 +134,7 @@ export const SimulationGrid = ({
     );
   };
 
-  // Create pheromone overlay with different colors for each type
+  // Create enhanced pheromone overlay with intense colors and better visualization
   const renderPheromoneOverlay = () => {
     if (!pheromoneData) return null;
 
@@ -122,12 +142,21 @@ export const SimulationGrid = ({
     
     return (
       <div className="absolute inset-0 pointer-events-none">
-        {/* Trail pheromones (green) */}
+        {/* Trail pheromones (green gradient) - Food paths */}
         {trail.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
-            const opacity = Math.min(value / max_values.trail, 0.4);
-            if (opacity < 0.05) return null; // Skip very low values
+            const intensity = Math.min(value / max_values.trail, 1.0);
+            if (intensity < 0.03) return null;
+            
+            // Enhanced green gradient for trail pheromones
+            let color;
+            if (intensity < 0.4) {
+              color = `rgba(34, 197, 94, ${intensity * 0.8})`; // Light green
+            } else {
+              color = `rgba(16, 185, 129, ${intensity * 1.0})`; // Bright emerald
+            }
+            
             return (
               <div
                 key={`trail-${x}-${y}`}
@@ -137,20 +166,30 @@ export const SimulationGrid = ({
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: `rgba(34, 197, 94, ${opacity})`, // Green
-                  border: opacity > 0.2 ? '1px solid rgba(34, 197, 94, 0.6)' : 'none',
+                  backgroundColor: color,
+                  border: intensity > 0.3 ? '2px solid rgba(16, 185, 129, 0.8)' : 'none',
+                  boxShadow: intensity > 0.4 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
                 }}
               />
             );
           })
         )}
         
-        {/* Alarm pheromones (red) */}
+        {/* Alarm pheromones (red gradient) - Danger zones */}
         {alarm.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
-            const opacity = Math.min(value / max_values.alarm, 0.4);
-            if (opacity < 0.05) return null;
+            const intensity = Math.min(value / max_values.alarm, 1.0);
+            if (intensity < 0.03) return null;
+            
+            // Enhanced red gradient for alarm pheromones
+            let color;
+            if (intensity < 0.4) {
+              color = `rgba(239, 68, 68, ${intensity * 0.7})`; // Light red
+            } else {
+              color = `rgba(220, 38, 38, ${intensity * 0.9})`; // Dark red
+            }
+            
             return (
               <div
                 key={`alarm-${x}-${y}`}
@@ -160,20 +199,30 @@ export const SimulationGrid = ({
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: `rgba(239, 68, 68, ${opacity})`, // Red
-                  border: opacity > 0.2 ? '1px solid rgba(239, 68, 68, 0.6)' : 'none',
+                  backgroundColor: color,
+                  border: intensity > 0.3 ? '2px solid rgba(220, 38, 38, 0.9)' : 'none',
+                  boxShadow: intensity > 0.4 ? '0 0 8px rgba(220, 38, 38, 0.7)' : 'none',
                 }}
               />
             );
           })
         )}
         
-        {/* Recruitment pheromones (blue) */}
+        {/* Recruitment pheromones (blue gradient) - Help requests */}
         {recruitment.map((row, y) =>
           row.map((value, x) => {
             if (value === 0) return null;
-            const opacity = Math.min(value / max_values.recruitment, 0.4);
-            if (opacity < 0.05) return null;
+            const intensity = Math.min(value / max_values.recruitment, 1.0);
+            if (intensity < 0.03) return null;
+            
+            // Enhanced blue gradient for recruitment pheromones
+            let color;
+            if (intensity < 0.4) {
+              color = `rgba(59, 130, 246, ${intensity * 0.7})`; // Light blue
+            } else {
+              color = `rgba(37, 99, 235, ${intensity * 0.9})`; // Dark blue
+            }
+            
             return (
               <div
                 key={`recruitment-${x}-${y}`}
@@ -183,8 +232,43 @@ export const SimulationGrid = ({
                   top: y * cellSize,
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: `rgba(59, 130, 246, ${opacity})`, // Blue
-                  border: opacity > 0.2 ? '1px solid rgba(59, 130, 246, 0.6)' : 'none',
+                  backgroundColor: color,
+                  border: intensity > 0.3 ? '2px solid rgba(37, 99, 235, 0.8)' : 'none',
+                  boxShadow: intensity > 0.4 ? '0 0 6px rgba(37, 99, 235, 0.6)' : 'none',
+                }}
+              />
+            );
+          })
+        )}
+
+        {/* Fear pheromones (orange-red gradient) - Predator areas */}
+        {fear && fear.map((row, y) =>
+          row.map((value, x) => {
+            if (value === 0) return null;
+            const intensity = Math.min(value / (max_values.fear || 1), 1.0);
+            if (intensity < 0.03) return null;
+            
+            // Enhanced orange-red gradient for fear pheromones (predator hotspots)
+            let color;
+            if (intensity < 0.4) {
+              color = `rgba(249, 115, 22, ${intensity * 0.8})`; // Light orange
+            } else {
+              color = `rgba(234, 88, 12, ${intensity * 1.0})`; // Dark orange-red
+            }
+            
+            return (
+              <div
+                key={`fear-${x}-${y}`}
+                className="absolute"
+                style={{
+                  left: x * cellSize,
+                  top: y * cellSize,
+                  width: cellSize,
+                  height: cellSize,
+                  backgroundColor: color,
+                  border: intensity > 0.3 ? '3px solid rgba(234, 88, 12, 0.9)' : 'none',
+                  boxShadow: intensity > 0.4 ? '0 0 10px rgba(234, 88, 12, 0.8)' : 'none',
+                  borderRadius: intensity > 0.5 ? '3px' : '0px',
                 }}
               />
             );
