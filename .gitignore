@@ -3,3 +3,9 @@ venv
 node_modules
 /data
 .DS_Store
+COMPLETE_IMPLEMENTATION_SUMMARY.md
+BLOCKCHAIN_LOGGING_GUIDE.md
+docs/dark-mode-demo.mov
+/docs
+docs/.DS_Store
+docs/.DS_Store
