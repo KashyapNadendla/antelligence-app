@@ -15,6 +15,8 @@ IO_API_KEY = os.getenv("IO_SECRET_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GAIA_API_KEY = os.getenv("GAIA_API_KEY")
 
 # Initialize model clients
 try:
@@ -40,6 +42,31 @@ openai_client = None
 if OPENAI_API_KEY:
     openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
     print("✅ OpenAI client configured")
+
+# GROQ client
+groq_client = None
+try:
+    from groq import Groq
+    if GROQ_API_KEY:
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        print("✅ GROQ client configured")
+except ImportError:
+    print("⚠️ groq not installed (pip install groq)")
+    groq_client = None
+
+# GAIA client (OpenAI-compatible) - requires specific node ID
+gaia_client = None
+GAIA_NODE_ID = os.getenv("GAIA_NODE_ID")  # Optional: specific node ID
+if GAIA_API_KEY and GAIA_NODE_ID:
+    gaia_client = openai.OpenAI(
+        api_key=GAIA_API_KEY,
+        base_url=f"https://{GAIA_NODE_ID}.gaia.domains/v1"
+    )
+    print(f"✅ GAIA client configured with node {GAIA_NODE_ID}")
+elif GAIA_API_KEY:
+    print("⚠️ GAIA_API_KEY found but GAIA_NODE_ID not set - GAIA models will use fallback")
+else:
+    print("⚠️ GAIA_API_KEY not configured")
 
 class SimpleAntAgent:
     def __init__(self, unique_id, model, is_llm_controlled=True):
@@ -270,8 +297,54 @@ class SimpleAntAgent:
                 )
                 action = response.choices[0].message.content.strip().lower()
             
-            # DeepSeek models (OpenAI-compatible via IO.NET)
-            elif selected_model_param.startswith("deepseek-") and self.model.io_client:
+            # GROQ models (llama-3.1-8b-instant, llama-guard-4-12b)
+            elif selected_model_param in ["llama-3.1-8b-instant", "meta-llama/llama-guard-4-12b", "llama-guard-4-12b"]:
+                if not groq_client:
+                    self.model.log_error(f"GROQ model {selected_model_param} requested but GROQ_API_KEY not configured. Falling back to random.")
+                    return 'random'
+                response = groq_client.chat.completions.create(
+                    model=selected_model_param if not selected_model_param.startswith("meta-llama/") else selected_model_param.replace("meta-llama/", ""),
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # GAIA models (gemma-3, Yi1.5, Qwen3, MiniCPM-V-2_6)
+            elif selected_model_param in ["gemma-3", "Yi1.5", "Qwen3", "MiniCPM-V-2_6"]:
+                if not gaia_client:
+                    self.model.log_error(f"GAIA model {selected_model_param} requested but GAIA_API_KEY not configured. Falling back to random.")
+                    return 'random'
+                response = gaia_client.chat.completions.create(
+                    model=selected_model_param,
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # DeepSeek models via IO.NET (deepseek-r1-0528)
+            elif selected_model_param in ["deepseek-r1-0528", "deepseek-ai/DeepSeek-R1-0528"] and self.model.io_client:
+                response = self.model.io_client.chat.completions.create(
+                    model=selected_model_param,
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent ant. Respond with one word: toward, random, or stay."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_completion_tokens=10,
+                    timeout=10
+                )
+                action = response.choices[0].message.content.strip().lower()
+            
+            # Magistral-small via IO.NET
+            elif selected_model_param in ["Magistral-small-2506", "mistralai/Magistral-Small-2506"] and self.model.io_client:
                 response = self.model.io_client.chat.completions.create(
                     model=selected_model_param,
                     messages=[
@@ -706,10 +779,9 @@ class SimpleForagingModel:
         self.enable_blockchain = True  # Always enabled
         self.food_collection_count = 0  # Debug counter
         
-        # Add test blockchain log
-        test_tx = f"0x{hash('test_init') % (2**64):016x}"
-        self.blockchain_logs.append(f"Blockchain integration initialized. Test Tx: {test_tx}")
-        print(f"[BLOCKCHAIN] Initialized with test transaction: {test_tx}")
+        # Initialize blockchain logs (no dummy transactions)
+        self.blockchain_logs.append("Blockchain integration initialized.")
+        print(f"[BLOCKCHAIN] Initialized successfully")
 
         # Initialize IO client with safety checks
         self.api_enabled = False
@@ -860,6 +932,7 @@ class SimpleForagingModel:
                 latency_ms = 0
                 success = False
                 gas_used = 0
+                is_simulated_tx = False  # Initialize as False, will be set to True if blockchain fails
                 
                 # Try to submit real blockchain transaction
                 try:
@@ -928,6 +1001,7 @@ class SimpleForagingModel:
                     latency_ms = np.random.randint(50, 200)
                     confirm_time = submit_time + latency_ms
                     success = True
+                    is_simulated_tx = True  # Mark as simulated
                 
                 # Store structured transaction data
                 tx_data = {
@@ -939,7 +1013,8 @@ class SimpleForagingModel:
                     'confirm_time': submit_time + latency_ms,
                     'latency_ms': latency_ms,
                     'success': success,
-                    'gas_used': gas_used
+                    'gas_used': gas_used,
+                    'is_simulated': is_simulated_tx
                 }
                 self.blockchain_transactions.append(tx_data)
                 

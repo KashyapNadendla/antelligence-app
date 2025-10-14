@@ -7,8 +7,10 @@ pandas
 web3
 google-generativeai
 mistralai
+groq
 httpx
 scipy
 nibabel
 scikit-image
+synapseclient
 pydantic

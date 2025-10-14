@@ -90,6 +90,7 @@ class BlockchainTransaction(BaseModel):
     latency_ms: int
     success: bool
     gas_used: int = 0  # Gas used in the transaction
+    is_simulated: bool = False  # Flag to indicate if this is a simulated fallback transaction
 
 class SimulationResult(BaseModel):
     """The final result of a full simulation run."""
@@ -212,6 +213,8 @@ class TumorStepState(BaseModel):
     queen_report: str
     errors: List[str]
     substrate_data: Optional[SubstrateMapData] = None
+    # Progress metadata for frontend
+    progress_info: Optional[Dict] = None  # current_step, total_steps, estimated_remaining_time
 
 
 class TumorSimulationResult(BaseModel):
@@ -224,6 +227,7 @@ class TumorSimulationResult(BaseModel):
     tumor_statistics: Dict  # Summary stats about tumor kill rate, etc.
     final_substrate_data: Optional[SubstrateMapData] = None
     blockchain_logs: List[str] = []
+    blockchain_transactions: List[Dict] = []  # Blockchain transaction history
 
 
 class TumorComparisonConfig(TumorSimulationConfig):

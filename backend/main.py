@@ -12,6 +12,7 @@ import random
 import traceback
 import openai
 from dotenv import load_dotenv
+from typing import Optional
 
 # Add the current directory to Python path for local development
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,6 +21,12 @@ try:
     from backend.simulation import SimpleForagingModel
     from backend.nanobot_simulation import TumorNanobotModel
     from backend.tumor_environment import CellPhase
+    from backend.data_loader import (
+        load_brats_subject, 
+        list_available_brats_datasets,
+        get_mri_slice_preview,
+        create_synthetic_tumor_geometry
+    )
     from backend.schemas import (
         SimulationConfig, SimulationResult, StepState, AntState, 
         PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
@@ -35,15 +42,24 @@ except ImportError:
     from simulation import SimpleForagingModel
     from nanobot_simulation import TumorNanobotModel
     from tumor_environment import CellPhase
-    from schemas import (
-        SimulationConfig, SimulationResult, StepState, AntState, 
-        PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
-        ComparisonConfig, ComparisonResult, PerformanceData,
-        PheromoneConfigUpdate, PredatorState,
-        # Tumor simulation schemas
-        TumorSimulationConfig, TumorSimulationResult, TumorStepState,
-        NanobotState, TumorCellState, VesselState, SubstrateMapData,
-        TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
+from data_loader import (
+    load_brats_subject, 
+    list_available_brats_datasets, 
+    get_mri_slice_preview,
+    create_synthetic_tumor_geometry,
+    download_brats_from_synapse,
+    validate_brats_dataset,
+    load_brats_subject_from_synapse
+)
+from schemas import (
+    SimulationConfig, SimulationResult, StepState, AntState, 
+    PheromoneMapData, ForagingEfficiencyData, FoodDepletionPoint,
+    ComparisonConfig, ComparisonResult, PerformanceData,
+    PheromoneConfigUpdate, PredatorState,
+    # Tumor simulation schemas
+    TumorSimulationConfig, TumorSimulationResult, TumorStepState,
+    NanobotState, TumorCellState, VesselState, SubstrateMapData,
+    TumorComparisonConfig, TumorComparisonResult, TumorPerformanceData
     )
 
 # Load environment variables
@@ -643,6 +659,15 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
                     for cell in sample_cells
                 ]
             
+            # Calculate progress information
+            progress_info = {
+                'current_step': model.step_count,
+                'total_steps': config.max_steps,
+                'progress_percentage': (model.step_count / config.max_steps) * 100,
+                'estimated_remaining_time': (config.max_steps - model.step_count) * 0.1,  # Rough estimate
+                'step_duration': 0.1  # Estimated step duration in minutes
+            }
+            
             # Create step state
             current_state = TumorStepState(
                 step=model.step_count,
@@ -653,13 +678,17 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
                 metrics=model.metrics.copy(),
                 queen_report=model.queen_report,
                 errors=model.errors.copy(),
-                substrate_data=substrate_data
+                substrate_data=substrate_data,
+                progress_info=progress_info
             )
             
             history.append(current_state)
             model.errors.clear()
         
         print(f"[TUMOR SIM] Simulation completed after {model.step_count} steps")
+        
+        # Finalize blockchain tracking
+        model.finalize_simulation()
         
         # Get final tumor statistics
         final_stats = model.geometry.get_tumor_statistics()
@@ -683,11 +712,13 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
         # Get final substrate data
         final_substrate_data = convert_substrate_maps(model)
         
-        # Blockchain logs (placeholder for now)
-        blockchain_logs = [
+        # Get blockchain logs and transactions from model
+        blockchain_logs = model.blockchain_logs if hasattr(model, 'blockchain_logs') else [
             f"Simulation initialized: {model.step_count} steps, {len(model.nanobots)} nanobots",
             f"Treatment outcome: {cells_killed} cells killed, {model.metrics['total_deliveries']} drug deliveries"
         ]
+        
+        blockchain_transactions = model.blockchain_transactions if hasattr(model, 'blockchain_transactions') else []
         
         return TumorSimulationResult(
             config=config,
@@ -697,7 +728,8 @@ async def run_tumor_simulation(config: TumorSimulationConfig):
             history=history,
             tumor_statistics=tumor_statistics,
             final_substrate_data=final_substrate_data,
-            blockchain_logs=blockchain_logs
+            blockchain_logs=blockchain_logs,
+            blockchain_transactions=blockchain_transactions
         )
         
     except Exception as e:
@@ -864,5 +896,763 @@ async def test_tumor_simulation():
         
     except Exception as e:
         print(f"[TUMOR TEST] Error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# BraTS Dataset Endpoints
+# ============================================================================
+
+# Set default BraTS data directory (can be configured via environment variable)
+BRATS_DATA_DIR = os.getenv("BRATS_DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data", "brats"))
+
+# Create data directory if it doesn't exist
+os.makedirs(BRATS_DATA_DIR, exist_ok=True)
+
+# Cache for downloaded datasets to avoid re-downloading
+DOWNLOADED_DATASETS = {}
+
+@app.get("/datasets/brats/list")
+async def list_brats_datasets():
+    """
+    List all available BraTS datasets.
+    
+    Returns a list of available BraTS subjects with metadata.
+    """
+    try:
+        print(f"[BRATS] Listing datasets from {BRATS_DATA_DIR}")
+        
+        # Check if directory exists, if not return synthetic dataset
+        if not os.path.exists(BRATS_DATA_DIR):
+            print(f"[BRATS] Directory not found. Returning synthetic dataset option.")
+            return {
+                "datasets": [
+                    {
+                        "id": "synthetic-001",
+                        "name": "Synthetic Glioblastoma",
+                        "description": "Synthetic tumor geometry for testing",
+                        "is_synthetic": True
+                    }
+                ],
+                "total_count": 1,
+                "data_dir": BRATS_DATA_DIR
+            }
+        
+        datasets = list_available_brats_datasets(BRATS_DATA_DIR)
+        
+        # Add synthetic option
+        datasets_with_synthetic = [
+            {
+                "id": "synthetic-001",
+                "name": "Synthetic Glioblastoma",
+                "description": "Synthetic tumor geometry for testing",
+                "is_synthetic": True
+            }
+        ] + [
+            {
+                "id": ds["id"],
+                "name": ds["id"],
+                "description": f"BraTS subject {ds['id']}",
+                "is_synthetic": False,
+                "path": ds["path"]
+            }
+            for ds in datasets
+        ]
+        
+        print(f"[BRATS] Found {len(datasets)} BraTS datasets + 1 synthetic")
+        
+        return {
+            "datasets": datasets_with_synthetic,
+            "total_count": len(datasets_with_synthetic),
+            "data_dir": BRATS_DATA_DIR
+        }
+        
+    except Exception as e:
+        print(f"[BRATS] Error listing datasets: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/datasets/brats/{dataset_id}/info")
+async def get_brats_dataset_info(dataset_id: str):
+    """
+    Get detailed information about a specific BraTS dataset.
+    
+    Args:
+        dataset_id: ID of the BraTS dataset
+        
+    Returns:
+        Dataset metadata including tumor statistics
+    """
+    try:
+        print(f"[BRATS] Getting info for dataset {dataset_id}")
+        
+        if dataset_id == "synthetic-001":
+            geometry = create_synthetic_tumor_geometry()
+            return {
+                "dataset_id": dataset_id,
+                "is_synthetic": True,
+                "tumor_center": geometry.tumor_center,
+                "tumor_radius": geometry.tumor_radius,
+                "volume_mm3": geometry.volume_mm3,
+                "n_cells": len(geometry.tumor_cells),
+                "metadata": geometry.metadata
+            }
+        
+        # Load real BraTS dataset
+        subject_path = os.path.join(BRATS_DATA_DIR, dataset_id)
+        
+        if not os.path.exists(subject_path):
+            raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
+        
+        geometry = load_brats_subject(subject_path)
+        
+        if not geometry:
+            raise HTTPException(status_code=500, detail=f"Failed to load dataset {dataset_id}")
+        
+        return {
+            "dataset_id": dataset_id,
+            "is_synthetic": False,
+            "tumor_center": geometry.tumor_center,
+            "tumor_radius": geometry.tumor_radius,
+            "volume_mm3": geometry.volume_mm3,
+            "n_cells": len(geometry.tumor_cells),
+            "metadata": geometry.metadata
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[BRATS] Error getting dataset info: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/datasets/brats/{dataset_id}/preview")
+async def get_brats_preview(dataset_id: str, modality: str = "t1ce", slice_index: int = 80):
+    """
+    Get MRI preview slice for a BraTS dataset.
+    
+    Args:
+        dataset_id: ID of the BraTS dataset
+        modality: MRI modality (t1, t1ce, t2, flair)
+        slice_index: Slice index to preview
+        
+    Returns:
+        Base64-encoded image data
+    """
+    try:
+        print(f"[BRATS] Getting preview for {dataset_id}, modality={modality}, slice={slice_index}")
+        
+        if dataset_id == "synthetic-001":
+            return {
+                "dataset_id": dataset_id,
+                "modality": modality,
+                "slice_index": slice_index,
+                "preview_available": False,
+                "message": "Preview not available for synthetic datasets"
+            }
+        
+        subject_path = os.path.join(BRATS_DATA_DIR, dataset_id)
+        
+        if not os.path.exists(subject_path):
+            raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
+        
+        slice_data = get_mri_slice_preview(subject_path, modality, slice_index)
+        
+        if slice_data is None:
+            return {
+                "dataset_id": dataset_id,
+                "modality": modality,
+                "slice_index": slice_index,
+                "preview_available": False,
+                "message": "Preview could not be generated (nibabel may not be installed)"
+            }
+        
+        # Convert to base64 for transmission
+        import base64
+        from io import BytesIO
+        from PIL import Image
+        
+        img = Image.fromarray(slice_data)
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        return {
+            "dataset_id": dataset_id,
+            "modality": modality,
+            "slice_index": slice_index,
+            "preview_available": True,
+            "image_data": f"data:image/png;base64,{img_base64}",
+            "dimensions": list(slice_data.shape)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[BRATS] Error getting preview: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/datasets/brats/synapse/download")
+async def download_brats_from_synapse_endpoint(request: dict):
+    """Download BraTS dataset from Synapse - DISABLED, using existing data."""
+    try:
+        synapse_id = request.get("synapse_id")
+        output_dir = request.get("output_dir", "data/brats")
+        
+        if not synapse_id:
+            return {
+                "success": False,
+                "error": "synapse_id is required in request body"
+            }
+        
+        # Check if we have existing validation data
+        validation_dir = os.path.join(output_dir, "ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData")
+        
+        if os.path.exists(validation_dir):
+            print(f"[SYNAPSE] Using existing validation data at {validation_dir}")
+            
+            # Validate the existing dataset
+            validation = validate_brats_dataset(output_dir)
+            
+            return {
+                "success": True,
+                "data_path": output_dir,
+                "validation": validation,
+                "cached": True,
+                "message": "Using existing validation data (Synapse download disabled)",
+                "note": "Manual validation data found, skipping Synapse download"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "No existing data found and Synapse download is disabled. Please add validation data manually to data/brats/ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData/"
+            }
+            
+    except Exception as e:
+        print(f"[SYNAPSE] Error: {str(e)}")
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api-keys/status")
+async def check_api_keys_status():
+    """Check which API keys are available for LLM models."""
+    try:
+        print("[API_KEYS] Checking API key status...")
+        
+        # Check actual environment variables
+        io_key = os.getenv("IO_SECRET_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        mistral_key = os.getenv("MISTRAL_API_KEY")
+        groq_key = os.getenv("GROQ_API_KEY")
+        gaia_key = os.getenv("GAIA_API_KEY")
+        
+        print(f"[API_KEYS] IO_SECRET_KEY: {'SET' if io_key and io_key != 'your_io_net_api_key_here' else 'NOT SET'}")
+        print(f"[API_KEYS] OPENAI_API_KEY: {'SET' if openai_key and openai_key != 'sk-your_openai_api_key_here' else 'NOT SET'}")
+        print(f"[API_KEYS] GEMINI_API_KEY: {'SET' if gemini_key and gemini_key != 'your_gemini_api_key_here' else 'NOT SET'}")
+        print(f"[API_KEYS] MISTRAL_API_KEY: {'SET' if mistral_key and mistral_key != 'your_mistral_api_key_here' else 'NOT SET'}")
+        print(f"[API_KEYS] GROQ_API_KEY: {'SET' if groq_key and groq_key != 'your_groq_api_key_here' else 'NOT SET'}")
+        print(f"[API_KEYS] GAIA_API_KEY: {'SET' if gaia_key and gaia_key != 'your_gaia_api_key_here' else 'NOT SET'}")
+        
+        api_keys_status = {
+            "io_secret_key": bool(io_key and io_key != "your_io_net_api_key_here"),
+            "openai_api_key": bool(openai_key and openai_key != "sk-your_openai_api_key_here"),
+            "gemini_api_key": bool(gemini_key and gemini_key != "your_gemini_api_key_here"),
+            "mistral_api_key": bool(mistral_key and mistral_key != "your_mistral_api_key_here"),
+            "groq_api_key": bool(groq_key and groq_key != "your_groq_api_key_here"),
+            "gaia_api_key": bool(gaia_key and gaia_key != "your_gaia_api_key_here")
+        }
+        
+        # Check if any LLM API keys are available
+        any_llm_available = any(api_keys_status.values())
+        
+        result = {
+            "success": True,
+            "api_keys": api_keys_status,
+            "any_llm_available": any_llm_available,
+            "message": "LLM models available" if any_llm_available else "No LLM API keys configured"
+        }
+        
+        print(f"[API_KEYS] Returning result: {result}")
+        return result
+        
+    except Exception as e:
+        print(f"[API_KEYS] Error checking API keys: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "api_keys": {
+                "io_secret_key": False,
+                "openai_api_key": False,
+                "gemini_api_key": False,
+                "mistral_api_key": False,
+                "groq_api_key": False,
+                "gaia_api_key": False
+            },
+            "any_llm_available": False
+        }
+
+
+@app.get("/datasets/brats/synapse/status")
+async def check_synapse_status():
+    """Check Synapse connection and authentication status."""
+    try:
+        auth_token = os.getenv("SYNAPSE_AUTH_TOKEN")
+        if not auth_token:
+            return {
+                "success": False,
+                "error": "SYNAPSE_AUTH_TOKEN not found in environment variables"
+            }
+        
+        # Try to connect to Synapse using threading to avoid event loop conflicts
+        try:
+            import threading
+            import queue
+            
+            result_queue = queue.Queue()
+            
+            def connection_worker():
+                try:
+                    import synapseclient
+                    syn = synapseclient.Synapse()
+                    syn.login(authToken=auth_token)
+                    result_queue.put((True, "Synapse connection successful"))
+                except Exception as e:
+                    result_queue.put((False, f"Synapse authentication failed: {str(e)}"))
+            
+            # Run connection test in separate thread
+            thread = threading.Thread(target=connection_worker)
+            thread.start()
+            thread.join(timeout=30)  # 30 second timeout
+            
+            if thread.is_alive():
+                return {
+                    "success": False,
+                    "error": "Synapse connection timed out",
+                    "auth_token_present": True
+                }
+            
+            if result_queue.empty():
+                return {
+                    "success": False,
+                    "error": "Synapse connection test failed - no result",
+                    "auth_token_present": True
+                }
+            
+            success, message = result_queue.get()
+            
+            if success:
+                return {
+                    "success": True,
+                    "message": message,
+                    "auth_token_present": True,
+                    "downloaded_datasets": list(DOWNLOADED_DATASETS.keys())
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": message,
+                    "auth_token_present": True
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Connection test failed: {str(e)}",
+                "auth_token_present": True
+            }
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/datasets/brats/synapse/debug/{synapse_id}")
+async def debug_synapse_dataset(synapse_id: str):
+    """Debug Synapse dataset access and permissions."""
+    try:
+        auth_token = os.getenv("SYNAPSE_AUTH_TOKEN")
+        if not auth_token:
+            return {
+                "success": False, 
+                "error": "SYNAPSE_AUTH_TOKEN not found in environment variables"
+            }
+        
+        import threading
+        import queue
+        
+        result_queue = queue.Queue()
+        
+        def debug_worker():
+            try:
+                import synapseclient
+                syn = synapseclient.Synapse()
+                syn.login(authToken=auth_token)
+                
+                # Get entity info
+                entity_info = syn.get(synapse_id)
+                
+                debug_info = {
+                    "entity_id": synapse_id,
+                    "entity_name": entity_info.name,
+                    "entity_type": str(entity_info.concreteType),
+                    "entity_parent": getattr(entity_info, 'parentId', None),
+                    "entity_created": getattr(entity_info, 'createdOn', None),
+                    "entity_modified": getattr(entity_info, 'modifiedOn', None),
+                    "entity_size": getattr(entity_info, 'fileSize', None),
+                    "entity_md5": getattr(entity_info, 'contentMd5', None),
+                    "entity_version": getattr(entity_info, 'versionNumber', None),
+                    "entity_uri": getattr(entity_info, 'uri', None),
+                    "permissions": [],
+                    "children": []
+                }
+                
+                # Check permissions
+                try:
+                    permissions = syn.getPermissions(synapse_id)
+                    debug_info["permissions"] = permissions
+                except Exception as e:
+                    debug_info["permissions_error"] = str(e)
+                
+                # Check children if it's a folder
+                try:
+                    if 'org.sagebionetworks.repo.model.Folder' in str(entity_info.concreteType):
+                        children = list(syn.getChildren(synapse_id))  # Convert generator to list
+                        debug_info["children"] = [
+                            {
+                                "id": child["id"],
+                                "name": child.get("name", "Unknown"),
+                                "type": child.get("type", "Unknown"),
+                                "size": child.get("size", None)
+                            }
+                            for child in children[:10]  # Limit to first 10 children
+                        ]
+                        debug_info["total_children"] = len(children)
+                    else:
+                        debug_info["children"] = []
+                        debug_info["total_children"] = 0
+                except Exception as e:
+                    debug_info["children_error"] = str(e)
+                
+                result_queue.put((True, debug_info))
+                
+            except Exception as e:
+                result_queue.put((False, str(e)))
+        
+        # Run debug in separate thread
+        thread = threading.Thread(target=debug_worker)
+        thread.start()
+        thread.join(timeout=60)  # 60 second timeout
+        
+        if thread.is_alive():
+            return {
+                "success": False,
+                "error": "Debug operation timed out after 60 seconds"
+            }
+        
+        if result_queue.empty():
+            return {
+                "success": False,
+                "error": "Debug operation failed - no result"
+            }
+        
+        success, result = result_queue.get()
+        
+        if success:
+            return {
+                "success": True,
+                "debug_info": result
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"Debug failed: {result}"
+            }
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/datasets/brats/synapse/validate/{synapse_id}")
+async def validate_synapse_dataset(synapse_id: str):
+    """Validate a Synapse BraTS dataset."""
+    try:
+        auth_token = os.getenv("SYNAPSE_AUTH_TOKEN")
+        if not auth_token:
+            return {
+                "success": False, 
+                "error": "SYNAPSE_AUTH_TOKEN not found in environment variables"
+            }
+        
+        # Check if already downloaded
+        if synapse_id in DOWNLOADED_DATASETS:
+            data_path = DOWNLOADED_DATASETS[synapse_id]
+            validation = validate_brats_dataset(data_path)
+            return {
+                "success": True,
+                "synapse_id": synapse_id,
+                "data_path": data_path,
+                "validation": validation,
+                "cached": True
+            }
+        
+        # Download and validate
+        data_path = download_brats_from_synapse(synapse_id, auth_token)
+        
+        if data_path:
+            validation = validate_brats_dataset(data_path)
+            DOWNLOADED_DATASETS[synapse_id] = data_path
+            return {
+                "success": True,
+                "synapse_id": synapse_id,
+                "data_path": data_path,
+                "validation": validation,
+                "cached": False
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Failed to download and validate dataset"
+            }
+            
+    except Exception as e:
+        print(f"[SYNAPSE] Error validating dataset: {str(e)}")
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/datasets/brats/synapse/load/{synapse_id}")
+async def load_brats_subject_from_synapse_endpoint(
+    synapse_id: str,
+    subject_id: Optional[str] = None
+):
+    """Load a BraTS subject directly from Synapse."""
+    try:
+        auth_token = os.getenv("SYNAPSE_AUTH_TOKEN")
+        if not auth_token:
+            return {
+                "success": False, 
+                "error": "SYNAPSE_AUTH_TOKEN not found in environment variables"
+            }
+        
+        geometry = load_brats_subject_from_synapse(synapse_id, auth_token, subject_id)
+        
+        if geometry:
+            return {
+                "success": True,
+                "synapse_id": synapse_id,
+                "subject_id": subject_id,
+                "geometry": {
+                    "tumor_center": geometry.tumor_center,
+                    "tumor_radius": geometry.tumor_radius,
+                    "volume_mm3": geometry.volume_mm3,
+                    "n_cells": len(geometry.tumor_cells),
+                    "metadata": geometry.metadata
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Failed to load subject from Synapse"
+            }
+            
+    except Exception as e:
+        print(f"[SYNAPSE] Error loading subject: {str(e)}")
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+class BraTSSimulationConfig(BaseModel):
+    """Configuration for running simulation with BraTS dataset."""
+    dataset_id: str
+    n_nanobots: int = 10
+    max_steps: int = 100
+    agent_type: str = "Rule-Based"
+    use_queen: bool = False
+    use_llm_queen: bool = False
+    selected_model: str = "meta-llama/Llama-3.3-70B-Instruct"
+    voxel_size: float = 20.0  # µm
+
+
+@app.post("/simulation/tumor/run-with-brats", response_model=TumorSimulationResult)
+async def run_tumor_simulation_with_brats(config: BraTSSimulationConfig):
+    """
+    Run tumor nanobot simulation using real BraTS tumor geometry.
+    
+    This endpoint loads tumor geometry from a BraTS dataset and runs
+    the nanobot simulation on that specific tumor shape.
+    """
+    try:
+        print(f"[BRATS SIM] Starting simulation with dataset {config.dataset_id}")
+        
+        # Load tumor geometry
+        if config.dataset_id == "synthetic-001":
+            geometry_data = create_synthetic_tumor_geometry()
+        else:
+            subject_path = os.path.join(BRATS_DATA_DIR, config.dataset_id)
+            
+            if not os.path.exists(subject_path):
+                raise HTTPException(status_code=404, detail=f"Dataset {config.dataset_id} not found")
+            
+            geometry_data = load_brats_subject(subject_path)
+            
+            if not geometry_data:
+                raise HTTPException(status_code=500, detail=f"Failed to load dataset {config.dataset_id}")
+        
+        print(f"[BRATS SIM] Loaded geometry: {len(geometry_data.tumor_cells)} cells, radius={geometry_data.tumor_radius:.1f}µm")
+        
+        # Create simulation with BraTS geometry
+        # For now, use standard tumor simulation with adjusted parameters
+        # In a full implementation, you would create tumor cells from geometry_data
+        
+        np.random.seed(42)
+        random.seed(42)
+        
+        domain_size = max(600.0, geometry_data.tumor_radius * 3)  # Ensure domain fits tumor
+        
+        model = TumorNanobotModel(
+            domain_size=domain_size,
+            voxel_size=config.voxel_size,
+            n_nanobots=config.n_nanobots,
+            tumor_radius=geometry_data.tumor_radius,
+            agent_type=config.agent_type,
+            with_queen=config.use_queen,
+            use_llm_queen=config.use_llm_queen,
+            selected_model=config.selected_model
+        )
+        
+        # Store BraTS metadata
+        model.brats_dataset_id = config.dataset_id
+        model.brats_geometry_metadata = geometry_data.metadata
+        
+        print(f"[BRATS SIM] Running {config.max_steps} steps...")
+        
+        initial_stats = model.geometry.get_tumor_statistics()
+        
+        history = []
+        detail_interval = max(1, config.max_steps // 20)
+        
+        vessels_state = [
+            VesselState(
+                position=v.position,
+                oxygen_supply=v.oxygen_supply,
+                drug_supply=v.drug_supply,
+                supply_radius=v.supply_radius
+            )
+            for v in model.geometry.vessels
+        ]
+        
+        for step_num in range(config.max_steps):
+            print(f"[BRATS SIM] Step {step_num + 1}/{config.max_steps}")
+            model.step()
+            
+            nanobots_state = [
+                NanobotState(**nanobot.to_dict())
+                for nanobot in model.nanobots
+            ]
+            
+            capture_detail = (step_num % detail_interval == 0) or (step_num == config.max_steps - 1)
+            substrate_data = None
+            tumor_cells_state = []
+            
+            if capture_detail:
+                substrate_data = convert_substrate_maps(model)
+                
+                sample_cells = random.sample(
+                    model.geometry.tumor_cells,
+                    min(100, len(model.geometry.tumor_cells))
+                )
+                tumor_cells_state = [
+                    TumorCellState(**cell.to_dict())
+                    for cell in sample_cells
+                ]
+            
+            # Calculate progress information
+            progress_info = {
+                'current_step': model.step_count,
+                'total_steps': config.max_steps,
+                'progress_percentage': (model.step_count / config.max_steps) * 100,
+                'estimated_remaining_time': (config.max_steps - model.step_count) * 0.1,
+                'step_duration': 0.1
+            }
+            
+            current_state = TumorStepState(
+                step=model.step_count,
+                time=model.microenv.time,
+                nanobots=nanobots_state,
+                tumor_cells=tumor_cells_state,
+                vessels=vessels_state if step_num == 0 else [],
+                metrics=model.metrics.copy(),
+                queen_report=model.queen_report,
+                errors=model.errors.copy(),
+                substrate_data=substrate_data,
+                progress_info=progress_info
+            )
+            
+            history.append(current_state)
+            model.errors.clear()
+        
+        print(f"[BRATS SIM] Simulation completed")
+        
+        model.finalize_simulation()
+        
+        final_stats = model.geometry.get_tumor_statistics()
+        
+        initial_living = initial_stats['living_cells']
+        final_living = final_stats['living_cells']
+        cells_killed = initial_living - final_living
+        
+        tumor_statistics = {
+            'initial_living_cells': initial_living,
+            'final_living_cells': final_living,
+            'cells_killed': cells_killed,
+            'kill_rate': cells_killed / initial_living if initial_living > 0 else 0,
+            'initial_hypoxic': len([c for c in model.geometry.tumor_cells if c.phase.value == 'hypoxic']),
+            'final_hypoxic': final_stats['phase_distribution'].get('hypoxic', 0),
+            'apoptotic_cells': final_stats['phase_distribution'].get('apoptotic', 0),
+            'necrotic_cells': final_stats['phase_distribution'].get('necrotic', 0),
+            'brats_dataset_id': config.dataset_id,
+            'brats_metadata': geometry_data.metadata
+        }
+        
+        final_substrate_data = convert_substrate_maps(model)
+        
+        blockchain_logs = model.blockchain_logs if hasattr(model, 'blockchain_logs') else []
+        blockchain_transactions = model.blockchain_transactions if hasattr(model, 'blockchain_transactions') else []
+        
+        # Convert config to TumorSimulationConfig for response
+        tumor_config = TumorSimulationConfig(
+            domain_size=domain_size,
+            voxel_size=config.voxel_size,
+            n_nanobots=config.n_nanobots,
+            tumor_radius=geometry_data.tumor_radius,
+            max_steps=config.max_steps,
+            agent_type=config.agent_type,
+            use_queen=config.use_queen,
+            use_llm_queen=config.use_llm_queen,
+            selected_model=config.selected_model
+        )
+        
+        return TumorSimulationResult(
+            config=tumor_config,
+            total_steps_run=model.step_count,
+            total_time=model.microenv.time,
+            final_metrics=model.metrics,
+            history=history,
+            tumor_statistics=tumor_statistics,
+            final_substrate_data=final_substrate_data,
+            blockchain_logs=blockchain_logs,
+            blockchain_transactions=blockchain_transactions
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[BRATS SIM] Error: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

@@ -196,52 +196,78 @@ export const SimulationControls = ({
         {/* Scrollable Metrics */}
         <div className="overflow-x-auto">
           <div className="flex gap-2 min-w-max pb-2">
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-700 min-w-[120px] shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">Step</p>
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Step</p>
+                <p className="text-lg font-extrabold text-blue-900 dark:text-blue-100">
                   {currentStep} / {totalSteps}
                 </p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className={`min-w-[120px] shadow-sm hover:shadow-md transition-all ${
+              metrics.foodCollected < 5 ? 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 dark:border-red-700' :
+              metrics.foodCollected < 15 ? 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 border-amber-200 dark:border-amber-700' :
+              'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-700'
+            }`}>
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">Food</p>
-                <p className="text-sm font-semibold text-foreground">{metrics.foodCollected}</p>
+                <p className={`text-xs font-medium ${
+                  metrics.foodCollected < 5 ? 'text-red-700 dark:text-red-300' :
+                  metrics.foodCollected < 15 ? 'text-amber-700 dark:text-amber-300' :
+                  'text-green-700 dark:text-green-300'
+                }`}>🍯 Food</p>
+                <p className={`text-lg font-extrabold ${
+                  metrics.foodCollected < 5 ? 'text-red-900 dark:text-red-100' :
+                  metrics.foodCollected < 15 ? 'text-amber-900 dark:text-amber-100' :
+                  'text-green-900 dark:text-green-100'
+                }`}>{metrics.foodCollected}</p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-700 min-w-[120px] shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">Ants</p>
-                <p className="text-sm font-semibold text-foreground">{metrics.activeAnts}</p>
+                <p className="text-xs font-medium text-purple-700 dark:text-purple-300">🐜 Ants</p>
+                <p className="text-lg font-extrabold text-purple-900 dark:text-purple-100">{metrics.activeAnts}</p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 border-cyan-200 dark:border-cyan-700 min-w-[120px] shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">API Calls</p>
-                <p className="text-sm font-semibold text-foreground">{metrics.apiCalls}</p>
+                <p className="text-xs font-medium text-cyan-700 dark:text-cyan-300">⚡ API Calls</p>
+                <p className="text-lg font-extrabold text-cyan-900 dark:text-cyan-100">{metrics.apiCalls}</p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className={`min-w-[120px] shadow-sm hover:shadow-md transition-all ${
+              metrics.queenActive ? 'bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950 dark:to-pink-900 border-pink-200 dark:border-pink-700' :
+              'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 border-gray-200 dark:border-gray-700'
+            }`}>
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">Queen</p>
-                <p className="text-sm font-semibold text-foreground">
-                    {metrics.queenActive ? "Active" : "Inactive"}
+                <p className={`text-xs font-medium ${
+                  metrics.queenActive ? 'text-pink-700 dark:text-pink-300' : 'text-gray-500 dark:text-gray-400'
+                }`}>👸 Queen</p>
+                <p className={`text-lg font-extrabold ${
+                  metrics.queenActive ? 'text-pink-900 dark:text-pink-100' : 'text-gray-600 dark:text-gray-400'
+                }`}>
+                    {metrics.queenActive ? "✓ Active" : "✗ Inactive"}
                 </p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className={`min-w-[120px] shadow-sm hover:shadow-md transition-all ${
+              metrics.blockchainActive ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 border-indigo-200 dark:border-indigo-700' :
+              'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 border-gray-200 dark:border-gray-700'
+            }`}>
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">🔗 Blockchain</p>
-                <p className="text-sm font-semibold text-foreground">
-                    {metrics.blockchainActive ? "Active" : "Inactive"}
+                <p className={`text-xs font-medium ${
+                  metrics.blockchainActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400'
+                }`}>🔗 Blockchain</p>
+                <p className={`text-lg font-extrabold ${
+                  metrics.blockchainActive ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-600 dark:text-gray-400'
+                }`}>
+                    {metrics.blockchainActive ? "✓ Active" : "✗ Inactive"}
                 </p>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 border-border min-w-[120px]">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-700 min-w-[120px] shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground">Efficiency</p>
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-xs font-medium text-orange-700 dark:text-orange-300">🔥 Efficiency</p>
+                <p className="text-lg font-extrabold text-orange-900 dark:text-orange-100">
                     {metrics.efficiency ? `${(metrics.efficiency * 100).toFixed(1)}%` : "N/A"}
                 </p>
               </CardContent>

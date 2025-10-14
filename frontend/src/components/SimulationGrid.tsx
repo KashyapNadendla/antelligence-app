@@ -304,16 +304,18 @@ export const SimulationGrid = ({
           {/* Nest/Home - only show if no queen is at this position */}
           {!ants.some(ant => ant.is_queen && ant.pos[0] === nest[0] && ant.pos[1] === nest[1]) && (
             <div
-              className="absolute text-2xl z-10"
+              className="absolute text-3xl z-10"
               style={{
                 left: nest[0] * cellSize,
                 top: nest[1] * cellSize,
-                width: cellSize,
-                height: cellSize,
+                width: cellSize * 1.4,
+                height: cellSize * 1.4,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                filter: "drop-shadow(0 0 8px rgba(139, 69, 19, 0.8))",
+                filter: "drop-shadow(0 0 12px rgba(139, 69, 19, 0.8)) drop-shadow(0 0 24px rgba(139, 69, 19, 0.4))",
+                transform: `translate(-20%, -20%)`,
+                animation: 'pulse 4s ease-in-out infinite',
               }}
             >
               🏠
@@ -324,20 +326,22 @@ export const SimulationGrid = ({
           {food.map((pile, index) => (
             <div
               key={`food-${index}`}
-              className="absolute text-lg"
+              className="absolute text-2xl transition-all duration-200 hover:scale-110 cursor-pointer"
               style={{
                 left: pile[0] * cellSize,
                 top: pile[1] * cellSize,
-                width: cellSize,
-                height: cellSize,
+                width: cellSize * 1.2,
+                height: cellSize * 1.2,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                filter: "drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))",
+                filter: "drop-shadow(0 0 6px rgba(16, 185, 129, 0.6)) drop-shadow(0 0 12px rgba(16, 185, 129, 0.3))",
                 zIndex: 10,
+                transform: `translate(-10%, -10%)`,
+                animation: 'pulse 3s ease-in-out infinite',
               }}
             >
-              🧊
+              🍯
             </div>
           ))}
 
@@ -346,23 +350,27 @@ export const SimulationGrid = ({
             <Tooltip key={ant.id}>
               <TooltipTrigger asChild>
                 <div
-                  className="absolute transition-all duration-200"
+                  className="absolute transition-all duration-300 hover:scale-125 hover:z-50 cursor-pointer"
                   style={{
                     left: ant.pos[0] * cellSize,
                     top: ant.pos[1] * cellSize,
-                    width: cellSize,
-                    height: cellSize,
-                    fontSize: ant.is_queen ? '1.5rem' : '1.25rem',
+                    width: cellSize * 1.2,
+                    height: cellSize * 1.2,
+                    fontSize: ant.is_queen ? '2rem' : '1.5rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    filter: ant.is_queen ? 'drop-shadow(0 0 6px gold)' : `drop-shadow(0 0 3px ${getAntColor(ant)})`,
-                    zIndex: ant.is_queen ? 30 : 20, // Queen has highest z-index, workers above food/nest
+                    filter: ant.is_queen 
+                      ? 'drop-shadow(0 0 10px gold) drop-shadow(0 0 20px rgba(255,215,0,0.5))' 
+                      : `drop-shadow(0 0 5px ${getAntColor(ant)}) drop-shadow(0 0 10px ${getAntColor(ant)}50)`,
+                    zIndex: ant.is_queen ? 30 : 20,
+                    transform: `translate(-10%, -10%)`,
+                    animation: ant.carrying_food && !ant.is_queen ? 'bounce 1s ease-in-out infinite' : ant.is_queen ? 'pulse 2s ease-in-out infinite' : 'none',
                   }}
                 >
                   {getAntEmoji(ant)}
                   {ant.carrying_food && !ant.is_queen && (
-                    <div className="absolute -top-1 -right-1 text-xs">🧊</div>
+                    <div className="absolute -top-1 -right-1 text-base animate-bounce">🍯</div>
                   )}
                 </div>
               </TooltipTrigger>
@@ -387,23 +395,25 @@ export const SimulationGrid = ({
             <Tooltip key={predator.id}>
               <TooltipTrigger asChild>
                 <div
-                  className="absolute transition-all duration-200"
+                  className="absolute transition-all duration-300 hover:scale-125 hover:z-50 cursor-pointer"
                   style={{
                     left: predator.pos[0] * cellSize,
                     top: predator.pos[1] * cellSize,
-                    width: cellSize,
-                    height: cellSize,
-                    fontSize: '1.5rem',
+                    width: cellSize * 1.3,
+                    height: cellSize * 1.3,
+                    fontSize: '2rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    filter: 'drop-shadow(0 0 8px rgba(139, 0, 0, 0.8))',
-                    zIndex: 25, // Above ants but below queen
+                    filter: 'drop-shadow(0 0 10px rgba(139, 0, 0, 0.8)) drop-shadow(0 0 20px rgba(139, 0, 0, 0.5))',
+                    zIndex: 25,
+                    transform: `translate(-15%, -15%)`,
+                    animation: predator.hunt_cooldown === 0 ? 'pulse 1.5s ease-in-out infinite' : 'none',
                   }}
                 >
                   {predator.is_llm ? '🦗' : '🐺'}
                   {predator.energy < 50 && (
-                    <div className="absolute -bottom-1 -right-1 text-xs">💤</div>
+                    <div className="absolute -bottom-1 -right-1 text-sm animate-pulse">💤</div>
                   )}
                 </div>
               </TooltipTrigger>

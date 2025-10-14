@@ -9,11 +9,12 @@ import { TumorSimulationGrid } from "@/components/TumorSimulationGrid";
 import { TumorSimulationControls } from "@/components/TumorSimulationControls";
 import { TumorSimulationSidebar } from "@/components/TumorSimulationSidebar";
 import { TumorPerformanceCharts } from "@/components/TumorPerformanceCharts";
+import { BlockchainMetrics } from "@/components/BlockchainMetrics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Activity, Zap, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface TumorSimulationConfig {
   domain_size: number;
@@ -37,13 +38,18 @@ const TumorSimulation = () => {
     n_nanobots: 10,
     tumor_radius: 200.0,
     agent_type: "Rule-Based",
-    selected_model: "meta-llama/Llama-3.3-70B-Instruct",
+    selected_model: "mistralai/Mistral-Large-Instruct-2411",
     use_queen: false,
     use_llm_queen: false,
     max_steps: 100,
     cell_density: 0.001,
     vessel_density: 0.01,
   });
+
+  // Helper function to ensure numeric values are safe
+  const safeValue = (value: any, defaultValue: number): number => {
+    return (typeof value === 'number' && !isNaN(value)) ? value : defaultValue;
+  };
 
   const [simulationResults, setSimulationResults] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -168,8 +174,10 @@ const TumorSimulation = () => {
       <SimulationLoading 
         isVisible={isLoading}
         progress={loadingProgress}
-        currentStep={Math.floor((loadingProgress / 100) * config.max_steps)}
-        totalSteps={config.max_steps}
+        currentStep={Math.floor((loadingProgress / 100) * safeValue(config.max_steps, 100))}
+        totalSteps={safeValue(config.max_steps, 100)}
+        simulationType="tumor"
+        message={isLoading ? "🧬 Initializing tumor microenvironment..." : undefined}
       />
       
       <TumorSimulationSidebar
@@ -250,20 +258,20 @@ const TumorSimulation = () => {
                   <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="oxygen">Oxygen</TabsTrigger>
                     <TabsTrigger value="drug">Drug</TabsTrigger>
-                    <TabsTrigger value="trail">Trail</TabsTrigger>
-                    <TabsTrigger value="alarm">Alarm</TabsTrigger>
-                    <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+                    <TabsTrigger value="trail">Delivery Path</TabsTrigger>
+                    <TabsTrigger value="alarm">Toxicity Signal</TabsTrigger>
+                    <TabsTrigger value="recruitment">Help Signal</TabsTrigger>
                   </TabsList>
                   <TabsContent value={selectedSubstrate} className="mt-4">
                     {simulationResults ? (
                       <TumorSimulationGrid
-                        domainSize={config.domain_size}
+                        domainSize={safeValue(config.domain_size, 600)}
                         nanobots={currentStepData?.nanobots ?? []}
                         tumorCells={currentStepData?.tumor_cells ?? []}
                         vessels={simulationResults.history[0]?.vessels ?? []}
                         substrateData={currentSubstrateData}
                         selectedSubstrate={selectedSubstrate}
-                        tumorRadius={config.tumor_radius}
+                        tumorRadius={safeValue(config.tumor_radius, 200)}
                         detailedMode={detailedMode}
                       />
                     ) : (
@@ -274,7 +282,7 @@ const TumorSimulation = () => {
                         <div className="mt-4 p-4 bg-pink-50 dark:bg-pink-950 rounded-lg max-w-md mx-auto">
                           <p className="text-sm">
                             💡 <strong>Tip:</strong> Nanobots navigate toward hypoxic tumor regions using 
-                            chemotaxis and pheromone trails, delivering targeted drug payloads.
+                            chemotaxis and communication signals, delivering targeted drug payloads to eliminate cancer cells.
                           </p>
                         </div>
                       </div>
@@ -321,6 +329,22 @@ const TumorSimulation = () => {
                   simulationResults={simulationResults}
                   currentStep={currentStep}
                 />
+              </>
+            )}
+
+            {/* Blockchain Metrics */}
+            {simulationResults && simulationResults.blockchain_transactions && (
+              <>
+                <Separator />
+                <div>
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-pink-800 dark:text-pink-200">
+                    <span className="animate-bounce">🔗</span>
+                    Blockchain Transaction Analytics
+                  </h2>
+                  <div className="grid grid-cols-1 gap-6">
+                    <BlockchainMetrics transactions={simulationResults.blockchain_transactions} />
+                  </div>
+                </div>
               </>
             )}
 
@@ -383,10 +407,10 @@ const TumorSimulation = () => {
                       <div>
                         <h4 className="font-semibold mb-2">Simulation Setup:</h4>
                         <ul className="space-y-1 text-muted-foreground">
-                          <li>Domain: {config.domain_size} µm</li>
-                          <li>Voxel Size: {config.voxel_size} µm</li>
-                          <li>Tumor Radius: {config.tumor_radius} µm</li>
-                          <li>Nanobots: {config.n_nanobots}</li>
+                          <li>Domain: {safeValue(config.domain_size, 600)} µm</li>
+                          <li>Voxel Size: {safeValue(config.voxel_size, 20)} µm</li>
+                          <li>Tumor Radius: {safeValue(config.tumor_radius, 200)} µm</li>
+                          <li>Nanobots: {safeValue(config.n_nanobots, 10)}</li>
                           <li>Agent Type: {config.agent_type}</li>
                         </ul>
                       </div>

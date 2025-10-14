@@ -188,16 +188,41 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-amber-50 dark:bg-amber-900 border-amber-300 dark:border-amber-700 max-h-[400px]">
-                  <SelectItem value="gpt-4o" className="text-amber-800 dark:text-amber-200">GPT-4o (OpenAI)</SelectItem>
-                  <SelectItem value="gpt-4o-mini" className="text-amber-800 dark:text-amber-200">GPT-4o Mini (OpenAI)</SelectItem>
+                  {/* Supported OpenAI Models */}
+                  <SelectItem value="openai/gpt-oss-120b" className="text-amber-800 dark:text-amber-200">GPT OSS 120B (OpenAI)</SelectItem>
+                  <SelectItem value="openai/gpt-oss-20b" className="text-amber-800 dark:text-amber-200">GPT OSS 20B (OpenAI)</SelectItem>
+                  
+                  {/* Supported Llama Models */}
                   <SelectItem value="meta-llama/Llama-3.3-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.3 70B (IO.NET)</SelectItem>
-                  <SelectItem value="meta-llama/Llama-3.1-405B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.1 405B (IO.NET)</SelectItem>
-                  <SelectItem value="meta-llama/Llama-3.1-70B-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.1 70B (IO.NET)</SelectItem>
-                  <SelectItem value="gemini-2.0-flash-exp" className="text-amber-800 dark:text-amber-200">Gemini 2.0 Flash (Google)</SelectItem>
-                  <SelectItem value="gemini-exp-1206" className="text-amber-800 dark:text-amber-200">Gemini 2.0 Pro (Google)</SelectItem>
-                  <SelectItem value="mistral-small-latest" className="text-amber-800 dark:text-amber-200">Mistral Small (Mistral AI)</SelectItem>
-                  <SelectItem value="mistral-large-latest" className="text-amber-800 dark:text-amber-200">Mistral Large (Mistral AI)</SelectItem>
-                  <SelectItem value="deepseek-chat" className="text-amber-800 dark:text-amber-200">DeepSeek Chat (IO.NET)</SelectItem>
+                  <SelectItem value="meta-llama/Llama-3.2-90B-Vision-Instruct" className="text-amber-800 dark:text-amber-200">Llama 3.2 90B Vision (IO.NET)</SelectItem>
+                  <SelectItem value="meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8" className="text-amber-800 dark:text-amber-200">Llama 4 Maverick 17B (IO.NET)</SelectItem>
+                  
+                  {/* Supported Mistral Models */}
+                  <SelectItem value="mistralai/Mistral-Large-Instruct-2411" className="text-amber-800 dark:text-amber-200">Mistral Large (Mistral AI)</SelectItem>
+                  <SelectItem value="mistralai/Mistral-Nemo-Instruct-2407" className="text-amber-800 dark:text-amber-200">Mistral Nemo (Mistral AI)</SelectItem>
+                  <SelectItem value="mistralai/Devstral-Small-2505" className="text-amber-800 dark:text-amber-200">Devstral Small (Mistral AI)</SelectItem>
+                  <SelectItem value="mistralai/Magistral-Small-2506" className="text-amber-800 dark:text-amber-200">Magistral Small (IO.NET)</SelectItem>
+                  
+                  {/* Supported DeepSeek Models */}
+                  <SelectItem value="deepseek-ai/DeepSeek-R1-0528" className="text-amber-800 dark:text-amber-200">DeepSeek R1 (IO.NET)</SelectItem>
+                  
+                  {/* Supported Qwen Models */}
+                  <SelectItem value="Qwen/Qwen2.5-VL-32B-Instruct" className="text-amber-800 dark:text-amber-200">Qwen 2.5 VL 32B (IO.NET)</SelectItem>
+                  <SelectItem value="Qwen/Qwen3-Next-80B-Instruct" className="text-amber-800 dark:text-amber-200">Qwen 3 Next 80B (IO.NET)</SelectItem>
+                  
+                  {/* GROQ Models */}
+                  <SelectItem value="llama-3.1-8b-instant" className="text-amber-800 dark:text-amber-200">⚡ Llama 3.1 8B Instant (GROQ)</SelectItem>
+                  <SelectItem value="llama-guard-4-12b" className="text-amber-800 dark:text-amber-200">🛡️ Llama Guard 4 12B (GROQ)</SelectItem>
+                  
+                  {/* GAIA Models */}
+                  <SelectItem value="gemma-3" className="text-amber-800 dark:text-amber-200">💎 Gemma 3 (GAIA)</SelectItem>
+                  <SelectItem value="Yi1.5" className="text-amber-800 dark:text-amber-200">🌸 Yi 1.5 (GAIA)</SelectItem>
+                  <SelectItem value="Qwen3" className="text-amber-800 dark:text-amber-200">🌟 Qwen 3 (GAIA)</SelectItem>
+                  <SelectItem value="MiniCPM-V-2_6" className="text-amber-800 dark:text-amber-200">🔬 MiniCPM-V 2.6 (GAIA)</SelectItem>
+                  
+                  {/* Other Supported Models */}
+                  <SelectItem value="LLM360/K2-Think" className="text-amber-800 dark:text-amber-200">K2 Think (IO.NET)</SelectItem>
+                  <SelectItem value="swiss-ai/Apertus-70B-Instruct-2509" className="text-amber-800 dark:text-amber-200">Apertus 70B (IO.NET)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -389,20 +414,25 @@ export const SimulationSidebar: React.FC<SimulationSidebarProps> = ({
         <Button
           onClick={onRunSimulation}
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-base shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed py-6"
         >
           {isLoading ? (
             <>
               <span className="animate-spin mr-2">🐜</span>
-              Running...
+              <span className="animate-pulse">Running Simulation...</span>
             </>
           ) : (
             <>
               <span className="animate-bounce mr-2">🚀</span>
-              Run Simulation
+              Start Ant Colony Simulation
             </>
           )}
         </Button>
+        {!isLoading && (
+          <p className="text-xs text-center text-amber-700 dark:text-amber-300 mt-2">
+            Watch LLM-powered ants collaborate using AI and pheromones
+          </p>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,4 @@
+path	parent	name	id	synapseStore	contentType	used	executed	activityName	activityDescription
+data/brats		ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData.zip	syn51514132	True					
+data/brats		ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData.zip	syn51514110	True					
+data/brats		BraTS2023_2017_GLI_Mapping.xlsx	syn51615438	True					

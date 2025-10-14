@@ -12,6 +12,7 @@ interface BlockchainTransaction {
   latency_ms: number;
   success: boolean;
   gas_used?: number;
+  is_simulated?: boolean;  // Flag to indicate simulated fallback transactions
 }
 
 interface BlockchainMetricsProps {
@@ -19,9 +20,14 @@ interface BlockchainMetricsProps {
 }
 
 export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
+  // Filter out simulated transactions - only show real blockchain transactions
+  const realTransactions = React.useMemo(() => {
+    return transactions.filter(tx => !tx.is_simulated);
+  }, [transactions]);
+
   // Calculate metrics
   const metrics = React.useMemo(() => {
-    if (transactions.length === 0) {
+    if (realTransactions.length === 0) {
       return {
         totalTx: 0,
         avgLatency: 0,
@@ -33,17 +39,17 @@ export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
       };
     }
 
-    const latencies = transactions.map(tx => tx.latency_ms);
+    const latencies = realTransactions.map(tx => tx.latency_ms);
     const avgLatency = latencies.reduce((sum, val) => sum + val, 0) / latencies.length;
     const minLatency = Math.min(...latencies);
     const maxLatency = Math.max(...latencies);
-    const successCount = transactions.filter(tx => tx.success).length;
-    const successRate = (successCount / transactions.length) * 100;
-    const llmTx = transactions.filter(tx => tx.ant_type === 'LLM').length;
-    const ruleTx = transactions.filter(tx => tx.ant_type === 'Rule').length;
+    const successCount = realTransactions.filter(tx => tx.success).length;
+    const successRate = (successCount / realTransactions.length) * 100;
+    const llmTx = realTransactions.filter(tx => tx.ant_type === 'LLM').length;
+    const ruleTx = realTransactions.filter(tx => tx.ant_type === 'Rule').length;
 
     return {
-      totalTx: transactions.length,
+      totalTx: realTransactions.length,
       avgLatency: Math.round(avgLatency),
       minLatency,
       maxLatency,
@@ -51,24 +57,24 @@ export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
       llmTx,
       ruleTx,
     };
-  }, [transactions]);
+  }, [realTransactions]);
 
   // Prepare chart data - sample every Nth transaction to keep chart readable
   const chartData = React.useMemo(() => {
-    if (transactions.length === 0) return [];
+    if (realTransactions.length === 0) return [];
     
     // Sample up to 20 points for a clean chart
-    const sampleRate = Math.max(1, Math.floor(transactions.length / 20));
-    return transactions
+    const sampleRate = Math.max(1, Math.floor(realTransactions.length / 20));
+    return realTransactions
       .filter((_, index) => index % sampleRate === 0)
       .map(tx => ({
         step: tx.step,
         latency: tx.latency_ms,
         type: tx.ant_type,
       }));
-  }, [transactions]);
+  }, [realTransactions]);
 
-  if (transactions.length === 0) {
+  if (realTransactions.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -164,7 +170,7 @@ export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
         <div className="mt-4">
           <div className="text-sm font-medium mb-2">Recent Transactions</div>
           <div className="max-h-[200px] overflow-y-auto space-y-1">
-            {transactions.slice(-10).reverse().map((tx, idx) => (
+            {realTransactions.slice(-10).reverse().map((tx, idx) => (
               <div key={idx} className="flex items-center justify-between text-xs p-2 rounded border bg-card/30 hover:bg-card/50 transition-colors">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
@@ -181,7 +187,7 @@ export function BlockchainMetrics({ transactions }: BlockchainMetricsProps) {
                   </span>
                 </div>
                 <a
-                  href={`https://sepolia.basescan.org/tx/${tx.tx_hash}`}
+                  href={`https://sepolia.basescan.org/tx/${tx.tx_hash.startsWith('0x') ? tx.tx_hash : '0x' + tx.tx_hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-2 px-2 py-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors whitespace-nowrap"

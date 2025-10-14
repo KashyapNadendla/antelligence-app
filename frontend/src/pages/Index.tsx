@@ -19,7 +19,7 @@ import { saveSimulationResult } from "@/lib/simulationHistory";
 import { BarChart3 } from "lucide-react";
 
 // The URL of your running FastAPI backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 interface SimulationConfig {
   grid_width: number;
@@ -65,7 +65,7 @@ const Index = () => {
     n_food: 15,
     n_ants: 10,
     agent_type: "LLM-Powered", // Default to LLM-Powered for better user experience
-    selected_model: "meta-llama/Llama-3.3-70B-Instruct",
+    selected_model: "mistralai/Mistral-Large-Instruct-2411",
     prompt_style: "Adaptive",
     use_queen: true, // Enabled by default
     use_llm_queen: false,
@@ -429,18 +429,18 @@ const Index = () => {
         />
 
         <div className="flex-1 overflow-auto">
-          <div className="p-4 space-y-6">
+          <div className="p-6 space-y-8">
             {/* Simulation Grid */}
-            <Card className="shadow-xl border-2 border-amber-200 dark:border-amber-700 transition-all duration-300 hover:shadow-2xl hover:border-amber-300 dark:hover:border-amber-600">
-              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
-                <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+            <Card className="shadow-2xl border-2 border-amber-200 dark:border-amber-700 transition-all duration-300 hover:shadow-2xl hover:border-amber-300 dark:hover:border-amber-600">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 pb-4">
+                <CardTitle className="flex items-center gap-2 text-2xl text-amber-800 dark:text-amber-200">
                   <span className="animate-pulse">🗺️</span>
                   Live Simulation Visualization
                 </CardTitle>
-                <CardDescription className="text-amber-700 dark:text-amber-300">
+                <CardDescription className="text-amber-700 dark:text-amber-300 mt-2">
                   {simulationResults 
-                    ? `Step ${currentStep + 1} of ${simulationResults.history.length}`
-                    : "Configure your colony in the sidebar and click 'Run Simulation'"
+                    ? `Step ${currentStep + 1} of ${simulationResults.history.length} • Watch LLM-powered ants forage using pheromone trails and blockchain memory`
+                    : "Configure your colony in the sidebar and click 'Start Ant Colony Simulation' to begin. Watch ants collaborate using AI and pheromone communication."
                   }
                 </CardDescription>
                 {simulationResults && (
@@ -509,52 +509,54 @@ const Index = () => {
                   </div>
 
                   {/* Vertical Legend */}
-                  <div className="w-48 space-y-4">
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-700 shadow-lg">
-                      <h4 className="font-semibold text-sm mb-3 text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                  <div className="w-52 space-y-4">
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border-2 border-amber-300 dark:border-amber-600 shadow-xl sticky top-4">
+                      <h4 className="font-bold text-base mb-4 text-amber-800 dark:text-amber-200 flex items-center gap-2 border-b border-amber-300 dark:border-amber-600 pb-2">
                         <span className="animate-pulse">🐜</span>
                         Colony Legend
                       </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-blue-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🐜 Ants</span>
+                      <div className="space-y-2.5 text-sm">
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Worker ants foraging for food">
+                          <div className="w-5 h-5 bg-blue-500 rounded-full shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">🐜 Ants</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-green-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🍯 Food</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Food resources to collect">
+                          <div className="w-5 h-5 bg-green-500 rounded-full shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-green-600 dark:group-hover:text-green-400">🍯 Food</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-purple-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">👸 Queen</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Queen ant providing strategic guidance">
+                          <div className="w-5 h-5 bg-purple-500 rounded-full shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-purple-600 dark:group-hover:text-purple-400">👸 Queen</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-red-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🦗 Predators</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Predators hunting ants">
+                          <div className="w-5 h-5 bg-red-500 rounded-full shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-red-600 dark:group-hover:text-red-400">🦗 Predators</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-emerald-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🟢 Trail Pheromone</span>
+                        <div className="h-px bg-amber-300 dark:bg-amber-600 my-3"></div>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Path to food sources">
+                          <div className="w-5 h-5 bg-emerald-500 rounded shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 text-xs font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400">🟢 Trail</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-red-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🔴 Alarm Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Danger warning signal">
+                          <div className="w-5 h-5 bg-red-500 rounded shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 text-xs font-medium group-hover:text-red-600 dark:group-hover:text-red-400">🔴 Alarm</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-blue-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🔵 Recruitment Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Call for help signal">
+                          <div className="w-5 h-5 bg-blue-500 rounded shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 text-xs font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">🔵 Recruit</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-amber-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🟠 Fear Pheromone</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Predator presence warning">
+                          <div className="w-5 h-5 bg-amber-500 rounded shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 text-xs font-medium group-hover:text-amber-600 dark:group-hover:text-amber-400">🟠 Fear</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-orange-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🔥 Efficiency</span>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Food collection hotspots">
+                          <div className="w-5 h-5 bg-orange-500 rounded shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 text-xs font-medium group-hover:text-orange-600 dark:group-hover:text-orange-400">🔥 Efficiency</span>
                         </div>
-                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-105">
-                          <div className="w-4 h-4 bg-gray-500 rounded shadow-sm"></div>
-                          <span className="text-gray-700 dark:text-gray-300">🏠 Nest</span>
+                        <div className="h-px bg-amber-300 dark:bg-amber-600 my-3"></div>
+                        <div className="flex items-center gap-2 transition-all duration-200 hover:scale-110 hover:translate-x-1 cursor-pointer group" title="Colony home base">
+                          <div className="w-5 h-5 bg-gray-500 rounded-full shadow-md group-hover:shadow-lg"></div>
+                          <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-gray-800 dark:group-hover:text-gray-200">🏠 Nest</span>
                         </div>
                       </div>
                     </div>
@@ -565,22 +567,22 @@ const Index = () => {
                           onClick={runSimulation}
                           disabled={isLoading}
                           size="sm"
-                          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed py-3"
                         >
                           {isLoading ? (
                             <>
                               <span className="animate-spin mr-2">🐜</span>
-                              Running...
+                              <span className="animate-pulse">Running...</span>
                             </>
                           ) : (
                             <>
                               <span className="animate-bounce mr-2">🚀</span>
-                              Start Foraging
+                              Quick Start
                             </>
                           )}
                         </Button>
-                        <p className="text-xs text-muted-foreground mt-2 text-center">
-                          Click to begin the simulation
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 text-center font-medium">
+                          Or use the sidebar for more options
                         </p>
                       </div>
                     )}
@@ -603,12 +605,17 @@ const Index = () => {
             {/* Performance Charts - Only show if simulation has run */}
             {simulationResults && (
               <>
-                <Separator />
+                <Separator className="my-8" />
                 <div>
-                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <span className="animate-pulse">📈</span>
-                    Performance Analysis
-                  </h2>
+                  <div className="mb-6">
+                    <h2 className="text-3xl font-bold mb-2 flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                      <span className="animate-pulse">📈</span>
+                      Performance Analytics
+                    </h2>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 ml-10">
+                      Real-time metrics showing food collection efficiency, API usage, and pheromone distributions
+                    </p>
+                  </div>
                   <PerformanceCharts
                     foodDepletionHistory={simulationResults.food_depletion_history ?? []}
                     currentMetrics={currentMetrics}
@@ -620,25 +627,35 @@ const Index = () => {
             )}
 
             {/* Historical Performance */}
-            <Separator />
+            <Separator className="my-8" />
             <div>
-              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                <span className="animate-bounce">📊</span>
-                Historical Performance
-              </h2>
+              <div className="mb-6">
+                <h2 className="text-3xl font-bold mb-2 flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                  <span className="animate-bounce">📊</span>
+                  Historical Performance
+                </h2>
+                <p className="text-sm text-amber-700 dark:text-amber-300 ml-10">
+                  Compare past simulation runs across different agent types and configurations
+                </p>
+              </div>
               <HistoricalPerformance />
             </div>
 
             {/* Blockchain Metrics - Only show if simulation has run */}
             {simulationResults && simulationResults.blockchain_transactions && (
               <>
-                <Separator />
+                <Separator className="my-8" />
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <span className="animate-pulse">🔗</span>
-                      Blockchain Analytics
-                    </h2>
+                  <div className="flex justify-between items-start">
+                    <div className="mb-6">
+                      <h2 className="text-3xl font-bold mb-2 flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                        <span className="animate-pulse">🔗</span>
+                        Blockchain Transaction Analytics
+                      </h2>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 ml-10">
+                        On-chain records of food collection events with latency metrics and Base Sepolia verification
+                      </p>
+                    </div>
                     <Button 
                       variant="outline" 
                       onClick={() => navigate('/comparison')}
@@ -656,12 +673,17 @@ const Index = () => {
             )}
 
             {/* Comparison Panel */}
-            <Separator />
+            <Separator className="my-8" />
             <div>
-              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                <span className="animate-bounce">⚔️</span>
-                Comparison Analysis
-              </h2>
+              <div className="mb-6">
+                <h2 className="text-3xl font-bold mb-2 flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                  <span className="animate-bounce">⚔️</span>
+                  Agent Comparison Lab
+                </h2>
+                <p className="text-sm text-amber-700 dark:text-amber-300 ml-10">
+                  Run side-by-side tests comparing LLM-powered vs Rule-based agents, and Queen vs No-Queen strategies
+                </p>
+              </div>
               <ComparisonPanel 
                 config={config}
                 apiBaseUrl={API_BASE_URL}

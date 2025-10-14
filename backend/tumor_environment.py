@@ -50,44 +50,117 @@ class TumorCell:
         self.hypoxic_duration = 0.0     # minutes spent hypoxic
         self.necrotic_time_threshold = 30.0  # minutes before necrosis
         
-        # Drug interaction
+        # Drug interaction - Configurable based on biological factors
         self.drug_sensitivity = 1.0     # Multiplier for drug effect
         self.accumulated_drug = 0.0     # Total drug absorbed
-        self.lethal_drug_dose = 100.0   # Drug units needed to kill cell
+        
+        # Configurable drug resistance (genetic variability: 0.5-2.0x multiplier)
+        # Some cells are naturally more resistant due to genetic mutations
+        self.drug_resistance = np.random.uniform(0.5, 2.0)
+        
+        # Microenvironment support factor (will be calculated based on vessel distance)
+        self.microenv_support = 1.0
+        
+        # Calculate required drug threshold based on cell state
+        self.required_drug_threshold = self._calculate_drug_threshold()
         
         # State tracking
         self.is_alive = True
         self.time_of_death = None
         
-    def update_oxygen_status(self, oxygen_concentration: float, dt: float):
+    def _calculate_drug_threshold(self) -> float:
+        """
+        Calculate the required drug threshold to kill this cell.
+        
+        Based on biological factors:
+        - Cell phase (viable cells have stronger defenses)
+        - Drug resistance (genetic variability)
+        - Microenvironment support (protection from surrounding tissue)
+        
+        Returns:
+            Required cumulative drug dose to induce apoptosis
+        """
+        # Base thresholds by cell phase (in arbitrary drug units)
+        base_threshold = {
+            CellPhase.VIABLE: 500.0,    # High threshold, strong defenses
+            CellPhase.HYPOXIC: 300.0,   # Medium, weakened but adaptable
+            CellPhase.NECROTIC: 100.0,  # Low, already dying
+            CellPhase.APOPTOTIC: 50.0   # Very low, in death process
+        }
+        
+        threshold = base_threshold.get(self.phase, 500.0)
+        
+        # Apply drug resistance multiplier (genetic factor)
+        threshold *= self.drug_resistance
+        
+        # Apply microenvironment support (environmental factor)
+        threshold *= self.microenv_support
+        
+        return threshold
+    
+    def update_microenv_support(self, vessel_distance: float):
+        """
+        Update microenvironment support based on proximity to blood vessels.
+        
+        Cells farther from vessels receive more protection from the tumor
+        microenvironment (hypoxia adaptation, metabolic changes).
+        
+        Args:
+            vessel_distance: Distance to nearest vessel in µm
+        """
+        # Farther from vessel = more microenv support (harder to kill)
+        # Factor ranges from 1.0 (at vessel) to 2.0 (very far)
+        self.microenv_support = 1.0 + min(vessel_distance / 100.0, 1.0)
+        
+        # Recalculate threshold with new support factor
+        self.required_drug_threshold = self._calculate_drug_threshold()
+        
+    def update_oxygen_status(self, oxygen_concentration: float, dt: float, log_callback=None):
         """
         Update cell state based on local oxygen concentration.
         
         Args:
             oxygen_concentration: Local O₂ in mmHg
             dt: Timestep in minutes
+            log_callback: Optional callback function to log phase changes
         """
         if not self.is_alive:
             return
+        
+        old_phase = self.phase
             
         if oxygen_concentration < self.hypoxic_threshold:
-            self.phase = CellPhase.HYPOXIC
+            if self.phase != CellPhase.HYPOXIC:
+                self.phase = CellPhase.HYPOXIC
+                # Log phase change
+                if log_callback:
+                    log_callback('cell_interaction', self, None, 0.0)
             self.hypoxic_duration += dt
             
             # Check if hypoxia has lasted long enough to cause necrosis
             if self.hypoxic_duration > self.necrotic_time_threshold:
-                self.phase = CellPhase.NECROTIC
-                self.is_alive = False
-                self.time_of_death = 'necrosis'
+                if self.phase != CellPhase.NECROTIC:
+                    self.phase = CellPhase.NECROTIC
+                    self.is_alive = False
+                    self.time_of_death = 'necrosis'
+                    # Log phase change to necrotic
+                    if log_callback:
+                        log_callback('cell_interaction', self, None, 0.0)
         else:
             # Return to viable if oxygen is restored
             if self.phase == CellPhase.HYPOXIC:
                 self.phase = CellPhase.VIABLE
                 self.hypoxic_duration = 0.0
+                # Log phase change
+                if log_callback:
+                    log_callback('cell_interaction', self, None, 0.0)
     
     def absorb_drug(self, drug_concentration: float, dt: float):
         """
         Absorb drug from local environment and check for apoptosis.
+        
+        Uses configurable threshold based on cell phase, drug resistance,
+        and microenvironment support.
         
         Args:
             drug_concentration: Local drug concentration (arbitrary units)
@@ -97,14 +170,44 @@ class TumorCell:
             return
             
         # Cells absorb drug proportional to concentration and sensitivity
-        drug_absorbed = drug_concentration * self.drug_sensitivity * dt * 0.1
+        drug_absorbed = drug_concentration * self.drug_sensitivity * dt * 1.0
         self.accumulated_drug += drug_absorbed
         
-        # Check if lethal dose reached
-        if self.accumulated_drug >= self.lethal_drug_dose:
+        # Check if required threshold reached (configurable based on cell state)
+        if self.accumulated_drug >= self.required_drug_threshold:
             self.phase = CellPhase.APOPTOTIC
             self.is_alive = False
             self.time_of_death = 'apoptosis'
+            # Debug: Log cell death with threshold info
+            print(f"[TUMOR CELL] Cell {self.cell_id} killed by drug (accumulated: {self.accumulated_drug:.2f}, threshold: {self.required_drug_threshold:.2f})")
+    
+    def accumulate_drug(self, amount: float) -> bool:
+        """
+        Directly accumulate drug (from nanobot delivery) and check for cell death.
+        
+        This method is called when a nanobot directly delivers drug to this cell,
+        bypassing the diffusion-based absorb_drug method.
+        
+        Args:
+            amount: Amount of drug delivered directly
+            
+        Returns:
+            True if cell dies from this delivery, False otherwise
+        """
+        if not self.is_alive:
+            return False
+        
+        self.accumulated_drug += amount
+        
+        # Check if threshold reached
+        if self.accumulated_drug >= self.required_drug_threshold:
+            self.phase = CellPhase.APOPTOTIC
+            self.is_alive = False
+            self.time_of_death = 'apoptosis'
+            print(f"[TUMOR CELL] Cell {self.cell_id} killed by nanobot delivery (accumulated: {self.accumulated_drug:.2f}, threshold: {self.required_drug_threshold:.2f}, resistance: {self.drug_resistance:.2f}x)")
+            return True
+        
+        return False
     
     def get_oxygen_consumption(self) -> float:
         """
@@ -134,7 +237,10 @@ class TumorCell:
             'is_alive': self.is_alive,
             'oxygen_uptake': self.get_oxygen_consumption(),
             'accumulated_drug': self.accumulated_drug,
-            'hypoxic_duration': self.hypoxic_duration
+            'hypoxic_duration': self.hypoxic_duration,
+            'drug_resistance': self.drug_resistance,
+            'microenv_support': self.microenv_support,
+            'required_threshold': self.required_drug_threshold
         }
 
 

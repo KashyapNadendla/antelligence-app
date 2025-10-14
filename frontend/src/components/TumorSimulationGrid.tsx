@@ -420,10 +420,12 @@ export function TumorSimulationGrid({
 
   return (
     <div className="flex flex-col items-center">
-      <canvas 
-        ref={canvasRef} 
-        className="border-2 border-gray-300 rounded-lg shadow-2xl bg-white"
-      />
+      <div className="relative">
+        <canvas 
+          ref={canvasRef} 
+          className="border-2 border-gray-300 rounded-lg shadow-2xl bg-white"
+        />
+      </div>
       
       {/* Legend below canvas */}
       <div className="mt-6 w-full max-w-3xl">
