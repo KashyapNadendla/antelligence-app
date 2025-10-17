@@ -87,8 +87,12 @@ origins = [
     "http://localhost:8080",  # Your current frontend port
     "http://127.0.0.1:5173",  # Vite sometimes uses 127.0.0.1 instead of localhost
     "http://127.0.0.1:8080",  # Your current frontend port (127.0.0.1 variant)
-    "https://yourdomain.com",  # Replace with your production domain
-    "https://antelligence.yourdomain.com",  # Replace with your production subdomain
+    "http://44.220.130.72:8001",  # EC2 IP
+    "http://18.188.48.39:8001",  # Current EC2 IP (added during troubleshooting)
+    "http://www.antelligence.co:8001",  # Custom domain
+    "https://www.antelligence.co",  # HTTPS version
+    "https://antelligence.co",  # Root domain HTTPS
+    "*"  # Allow all origins for now
 ]
 
 # Add the CORS middleware to the application

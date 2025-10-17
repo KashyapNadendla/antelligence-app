@@ -12,7 +12,7 @@ COPY frontend/package*.json ./
 COPY frontend/bun.lockb ./
 
 # Install dependencies with production optimizations
-RUN npm ci --only=production --silent && npm cache clean --force
+RUN npm ci --silent && npm cache clean --force
 
 # Copy frontend source code
 COPY frontend/ ./

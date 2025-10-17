@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import antFrontpageImage from '/ant-frontpage.jpg';
+// import antFrontpageImage from '/ant-frontpage.jpg';
 
 interface IntroPageProps {
   onEnter: () => void;
@@ -42,7 +42,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
 
   return (
     <div className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed"
-         style={{ backgroundImage: `url(${antFrontpageImage})` }}>
+         style={{ backgroundImage: `url('/ant-frontpage.jpg')` }}>
       {/* Hero Section */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="text-center -mt-48">

@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ArrowLeft, Play, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 interface ComparisonConfig {
   foodCounts: number[];

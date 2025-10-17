@@ -19,7 +19,7 @@ import { saveSimulationResult } from "@/lib/simulationHistory";
 import { BarChart3 } from "lucide-react";
 
 // The URL of your running FastAPI backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8001";
 
 interface SimulationConfig {
   grid_width: number;
@@ -141,7 +141,21 @@ const Index = () => {
       
       console.log("🚀 Sending simulation config:", simulationConfig);
       
-      const response = await axios.post(`${API_BASE_URL}/simulation/run`, simulationConfig);
+      console.log("API_BASE_URL:", API_BASE_URL);
+      console.log("API_BASE_URL type:", typeof API_BASE_URL);
+      console.log("API_BASE_URL length:", API_BASE_URL.length);
+      console.log("API_BASE_URL charCodes:", API_BASE_URL.split('').map(c => c.charCodeAt(0)));
+      
+      const fullUrl = API_BASE_URL + "/simulation/run";
+      console.log("Full URL:", fullUrl);
+      console.log("Full URL length:", fullUrl.length);
+      console.log("Simulation config:", simulationConfig);
+      
+      // Try hardcoded URL first
+      const hardcodedUrl = "http://localhost:8001/simulation/run";
+      console.log("Hardcoded URL:", hardcodedUrl);
+      
+      const response = await axios.post(hardcodedUrl, simulationConfig);
       
       clearInterval(progressInterval);
       

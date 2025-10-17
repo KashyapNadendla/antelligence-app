@@ -30,7 +30,7 @@ fi
 
 # Build the Docker image
 echo "🔨 Building Docker image..."
-docker build -t antelligence .
+docker build --platform linux/arm64 -t antelligence .
 
 if [ $? -eq 0 ]; then
     echo "✅ Docker image built successfully!"
